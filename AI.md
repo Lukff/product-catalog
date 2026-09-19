@@ -51,3 +51,24 @@ to me as a judgement call.
 
 **Reflection:** The choice was useful. On the testing loop — I needed a simple
 skill to help me, so skipping it was the right call.
+
+## 2026-09-19 — Defining the backlog
+
+**Context:** `docs/technical-decisions.md` was agreed and `docs/backlog.md` was
+still an empty stub, so no work item existed to start implementation against. Two
+items in that document's "Open decisions" section — category modelling and the
+unprompted custom feature — were still unresolved and gate real code.
+
+**Tooling & prompts:** Claude Code on Opus 5, via the superpowers `brainstorming`
+skill. The model classified the task as bounded and put the two shaping choices to
+me as multiple-choice prompts: how to handle the unresolved open decisions, and how
+to slice and order the items.
+
+**What happened:** I asked to define the backlog items. For the open decisions I
+chose explicit blocked placeholders over resolving them first, so the backlog would
+exist without pre-empting decisions `CLAUDE.md` says must be agreed separately.
+On slicing I took the walking-skeleton ordering as proposed but corrected it:
+backend and frontend became separate items rather than one item per slice. I wanted
+to break the tasks first because it makes it easier for working later in specific
+sessions. The result is 24 items in six phases plus `D-1` and `D-2` recorded as
+gating decisions rather than work items.
