@@ -22,7 +22,13 @@ Read these before proposing or writing code. They are the source of truth; this 
 
 - `docs/technical-decisions.md` is binding. If a decision there is wrong or blocks you, say so and get agreement before diverging — then update the document in the same change.
 - Two items in that document's "Open decisions" section are unresolved (category modelling, the custom feature). Do not implement the code they affect until they are decided.
-- Update `AI.md` as work proceeds, not reconstructed at the end.
+- Update `AI.md` as work proceeds, not reconstructed at the end. Use the `ai-log` skill
+  (`.claude/skills/ai-log/SKILL.md`) for every entry. After each significant step —
+  a vertical slice or feature completed, a technical decision made or reversed, a
+  course correction, a notable prompting technique, an open decision resolved —
+  stop and ask the user for the entry before moving on. Not for routine edits, test
+  reruns, formatting commits or dependency bumps. The user may also invoke the skill
+  directly at any time. Never write an `AI.md` entry without the user's own input.
 - Keep `README.md` current when setup steps or architecture change.
 - Anything left incomplete goes in `README.md` as a documented next step.
 
