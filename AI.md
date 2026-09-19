@@ -1,0 +1,3 @@
+- I'm starting by extracting the text from the pdf assignment to a markdown file and formatting it as a general project brief. I will structure definitions and tasks using this document. I used gemini for the initial extraction.
+- I started with a session for defining the technical decisions (stack, structure) taking the doc as a baseline. Asked the model to question me for each step.
+  - I hadn't used Drizzle ORM before. It was a suggestion from the model, but after reviewing the docs and repo I think it is aligned with the purpose I have here.
