@@ -339,3 +339,13 @@ committing. The category select is disabled until B-11, as the backlog says.
 **Tooling & prompts:** Claude Code on Sonnet 5, in a background session, with the `superpowers:brainstorming` skill. The prompt was "let's plan the extra feature, I want something simple. Give me options". Claude read the D-2 candidates in `docs/technical-decisions.md` and the backlog, and offered four options (low-stock alerts with metrics, CSV export, audit log, bulk operations), each with persona, cost and catch. It recommended low-stock alerts.
 
 **What happened:** I picked A ("Go with A"). Claude then presented a short design in chat: a `GET /api/products/stats` endpoint, a `stockStatus` filter on the list endpoint, and a metric strip whose Low and Out tiles toggle that filter. I approved it with "lgmt". Claude wrote the resolution into `docs/technical-decisions.md` §7.2 and `docs/backlog.md` (D-2 resolved, B-12 scoped) on `feat/b-12-low-stock`, commit `3f68d70`, and stopped before any code. My reason for the choice: "I wanted to go with something simple and the low stocks notification builds easily in what I already developed".
+
+## 2026-09-20 — Building the custom feature: low-stock alerts (B-12)
+
+**Context:** D-2 was resolved earlier the same day as low-stock alerts with inventory metrics, and B-12 was scoped in `docs/backlog.md` and `docs/technical-decisions.md` before any code. B-11 (categories) had just been merged to `main`, so B-12 was the last product item left.
+
+**Tooling & prompts:** Claude Code on Sonnet 5, in a background session in its own git worktree (`feat/b-12-low-stock`). The prompt was "go, start B-12", with no further detail, because the design had already been approved in chat and written into the docs. The work was test-first with Vitest, then a Playwright check of the running app.
+
+**What happened:** Claude built it in three slices, each committed on its own: the shared contract (a `stockStatus` query param and a stats schema), the API (`GET /api/products/stats`, the `stockStatus` filter and the OpenAPI entries), and the web side (a stats store and the `MetricTiles` strip, whose Low and Out tiles toggle the filter). The existing OpenAPI coverage test failed until the new route was documented, which caught the omission. In the browser the tiles filtered the list, Back restored the filter, the strip refreshed after a delete, and the layout held at phone width. Claude also made creating a product clear the stock filter, so a new row can't be hidden under it, and it marked B-12 Done and wrote the README rationale.
+
+**Reflection:** given the workflow, and with thing planned, going from a simple idea to code was quick
