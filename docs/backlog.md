@@ -436,7 +436,7 @@ Web:
 
 ### B-19 — Icon library and icon buttons
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-07, B-10, B-11, B-17, B-18
 
 - Add an icon library to `apps/web` (a Svelte-compatible, tree-shakeable one, e.g.
