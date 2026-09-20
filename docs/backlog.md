@@ -245,7 +245,7 @@ B-11 was unblocked by D-1; B-12 remains blocked on D-2.
 
 ### B-11 — Categories
 
-**Status:** Todo
+**Status:** In progress
 **Depends on:** B-03, B-08
 
 API:
@@ -253,6 +253,9 @@ API:
 - `GET /api/categories` returns the paginated envelope.
 - `POST /api/categories` creates a category from its slug, validated with the
   shared slug schema; a duplicate slug returns `409 CONFLICT`.
+- `DELETE /api/categories/:slug` answers `204`; an unknown slug returns `404`,
+  and a category that any product still uses returns `409 CONFLICT` (no
+  reassign, no cascade).
 - `?category=` on the products list stays consistent with what the categories
   endpoint reports.
 - The wire contract (`category` as a string slug) is unchanged; the surrogate
@@ -263,6 +266,14 @@ Web:
 - The toolbar's category select is populated from `GET /api/categories` rather
   than hardcoded.
 - Selecting a category filters the list and is reflected in the URL.
+- A "Manage categories" dialog opened from the toolbar lists the categories with
+  a remove button each, plus one slug input to add. Server errors (duplicate on
+  add, in use on remove) show inline; remove has no confirm step because it can
+  only succeed on an unused category.
+- After an add or remove the toolbar select refreshes; removing the active
+  filter's category resets the filter.
+- Out of scope: turning the product form's free-text category field into a
+  dropdown.
 
 ### B-12 — Custom feature and metric strip
 

@@ -107,6 +107,7 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 | DELETE | `/api/products/:id` | `204`, empty body. `404` if absent. |
 | GET | `/api/categories` | Paginated list, same envelope. |
 | POST | `/api/categories` | Extended endpoint; creates a category from its slug. `409` on a duplicate slug. |
+| DELETE | `/api/categories/:slug` | Extended endpoint; `204`, empty body. `404` if absent, `409` while any product still uses it. |
 
 - **Search** is `GET /api/products?q=flux`, not a separate `/search` route, so search composes with the category filter, sort, and pagination instead of duplicating that logic. Matching is a case-insensitive substring (`LIKE`) over `title` and `description`; `%` and `_` in the search text match themselves (escaped), not as wildcards. Blank `q` is ignored.
 - **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`. `title` sorts case-insensitively, and ties always fall back to `id` so pages never overlap or skip a row. An unknown `category` slug is a filter with no matches (an empty `200`), not an error.
@@ -115,6 +116,7 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 - **POST `/api/products` order of checks:** request body JSON parsing (`400` with empty path and `'must be valid JSON'` if malformed) -> shared schema validation (`400` with field-level `details`) -> category existence check (`400` naming `category`) -> sku uniqueness check (`409`). Both timestamps are set to the same server clock ISO timestamp; `id` and client-sent timestamps are stripped.
 - **PATCH `/api/products/:id` order of checks:** path param `id` validation (`400`) -> request body JSON parsing (`400` with empty path and `'must be valid JSON'`) -> shared schema validation (`400` with field-level `details`, or `'must include at least one field'`) -> product exists (`404`) -> category existence check (`400` naming `category`) -> sku owned by another product (`409` with `details` naming `sku`). A product re-sending its own sku is not a conflict. Only the fields present in the patch are written and `updatedAt` is refreshed from the server clock; `id` and client-sent timestamps are stripped.
 - **DELETE `/api/products/:id`:** path param `id` validation (`400`) -> product deletion. Answers `204` with an empty body, and `404 NOT_FOUND` for an absent or already deleted id, with no cascade (categories are untouched).
+- **DELETE `/api/categories/:slug`:** path param `slug` validation with the shared slug schema (`400`) -> category exists (`404 NOT_FOUND`) -> no product uses it (`409 CONFLICT`, `details` naming `category`) -> deletion, answering `204` with an empty body. Removal never reassigns or deletes products; it matches the `ON DELETE RESTRICT` foreign key, and the service checks first so the error is a clean `409` rather than a constraint failure.
 
 ### 3.3 Errors
 
