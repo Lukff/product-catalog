@@ -1,6 +1,7 @@
 import {
   ERROR_CODES,
   categorySchema,
+  categorySlugParamSchema,
   createCategorySchema,
   createProductSchema,
   listQuerySchema,
@@ -126,8 +127,9 @@ function componentSchemas(): Record<string, Schema> {
 
 const ERROR_RESPONSES = {
   '400': 'Validation failed (`VALIDATION_ERROR`). `details` lists every failing field.',
-  '404': 'No such product (`NOT_FOUND`).',
-  '409': 'Conflict (`CONFLICT`), such as a duplicate `sku` or category slug.',
+  '404': 'No such product or category (`NOT_FOUND`).',
+  '409':
+    'Conflict (`CONFLICT`), such as a duplicate `sku` or category slug, or a category still in use.',
   '500':
     'Unexpected error (`INTERNAL_ERROR`). The message is generic; the cause is logged server-side.',
 } as const;
@@ -193,6 +195,14 @@ function operationSpecs(): OperationSpec[] {
     required: true,
     description: 'Product id.',
     schema: { type: 'integer', minimum: 1 },
+  };
+  const slugParam = {
+    name: 'slug',
+    in: 'path',
+    required: true,
+    description: 'Category slug.',
+    schema: (jsonSchema(categorySlugParamSchema, 'input').properties as Record<string, Schema>)
+      .slug,
   };
   const pageParams = [
     queryParam('page', '1-based page number.'),
@@ -308,6 +318,30 @@ function operationSpecs(): OperationSpec[] {
           code: 'CONFLICT',
           message: 'category already exists',
           details: [{ path: 'slug', message: 'already exists' }],
+        },
+      },
+    },
+    {
+      method: 'delete',
+      path: '/api/categories/{slug}',
+      tag: 'Categories',
+      summary: 'Delete a category',
+      description:
+        'Removes an unused category. A category that any product still uses is a `409`; ' +
+        'products are never reassigned or deleted.',
+      parameters: [slugParam],
+      success: { status: '204', description: 'Deleted. The response has no body.' },
+      errors: ['400', '404', '409', '500'],
+      errorExamples: {
+        '400': validationError(
+          'slug',
+          'must be a lowercase slug (letters, digits and single hyphens)',
+        ),
+        '404': { code: 'NOT_FOUND', message: 'Category "ghost-town" not found' },
+        '409': {
+          code: 'CONFLICT',
+          message: 'Category "automotive" still has products',
+          details: [{ path: 'category', message: 'is still used by at least one product' }],
         },
       },
     },
