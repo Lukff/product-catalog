@@ -1,6 +1,7 @@
 import type { Product } from '@catalog/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  categoryOptions,
   changedFields,
   detailsToFieldErrors,
   EMPTY_VALUES,
@@ -180,5 +181,22 @@ describe('changedFields', () => {
       category: 'tools',
       sku: 'ACM-2',
     });
+  });
+});
+
+describe('categoryOptions', () => {
+  const slugs = ['automotive', 'kitchen'];
+
+  it('is the list as it is when there is nothing extra to keep', () => {
+    expect(categoryOptions(slugs, '')).toEqual(slugs);
+    expect(categoryOptions(slugs, 'kitchen')).toEqual(slugs);
+  });
+
+  it('keeps the original category as an option when it is missing from the list', () => {
+    expect(categoryOptions(slugs, 'legacy')).toEqual(['legacy', 'automotive', 'kitchen']);
+  });
+
+  it('returns a copy, not the store array', () => {
+    expect(categoryOptions(slugs, '')).not.toBe(slugs);
   });
 });

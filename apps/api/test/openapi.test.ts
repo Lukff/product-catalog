@@ -7,8 +7,10 @@ import {
   patchProductSchema,
   productSchema,
 } from '@catalog/shared';
+import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
+import { registerDocs } from '../src/openapi/docs.js';
 import { createTestDb, type TestDb } from './helpers.js';
 
 type Schema = Record<string, unknown>;
@@ -34,6 +36,7 @@ interface Doc {
 }
 
 const EXPECTED_OPERATIONS = [
+  'DELETE /api/categories/{slug}',
   'DELETE /api/products/{id}',
   'GET /api/categories',
   'GET /api/products',
@@ -51,6 +54,7 @@ const EXPECTED_STATUSES: Record<string, string[]> = {
   'DELETE /api/products/{id}': ['204', '400', '404', '500'],
   'GET /api/categories': ['200', '400', '500'],
   'POST /api/categories': ['201', '400', '409', '500'],
+  'DELETE /api/categories/{slug}': ['204', '400', '404', '409', '500'],
 };
 
 /** Operations whose route exists in the real app. Add each one here as its backlog item lands. */
@@ -60,6 +64,9 @@ const IMPLEMENTED_OPERATIONS = new Set([
   'POST /api/products',
   'PATCH /api/products/{id}',
   'DELETE /api/products/{id}',
+  'GET /api/categories',
+  'POST /api/categories',
+  'DELETE /api/categories/{slug}',
 ]);
 
 let testDb: TestDb;
@@ -429,10 +436,12 @@ describe('implementation status', () => {
   });
 
   it('flips an operation on as soon as its route is registered, and only that one', async () => {
-    const app = newApp();
+    // A bare app, so the result does not depend on which routes the real one has yet.
+    const app = new Hono();
+    registerDocs(app);
     app.get('/api/categories', (c) => c.json({ data: [] }));
 
-    const ops = operations(await fetchDoc(app));
+    const ops = operations(await fetchDoc(app as ReturnType<typeof createApp>));
 
     expect(ops.get('GET /api/categories')?.['x-implemented']).toBe(true);
     expect(ops.get('GET /api/categories')?.description).not.toMatch(/Not implemented yet/);

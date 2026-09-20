@@ -109,3 +109,11 @@ export function changedFields(original: Product, input: CreateProductInput): Pat
   // Every key is a field of the patch schema and every value came from the validated input.
   return patch as PatchProductInput;
 }
+
+/**
+ * The slugs the category select offers. `original` is the category the form opened with (empty
+ * when creating); it stays selectable even if the list lacks it, so opening Edit never changes it.
+ */
+export function categoryOptions(slugs: readonly string[], original: string): string[] {
+  return original !== '' && !slugs.includes(original) ? [original, ...slugs] : [...slugs];
+}

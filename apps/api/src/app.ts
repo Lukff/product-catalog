@@ -2,8 +2,11 @@ import { Hono } from 'hono';
 import type { Db } from './db/client.js';
 import { handleError, handleNotFound } from './middleware/error-handler.js';
 import { registerDocs } from './openapi/docs.js';
+import { createCategoryRepository } from './repositories/category-repository.js';
 import { createProductRepository } from './repositories/product-repository.js';
+import { categoryRoutes } from './routes/categories.js';
 import { productRoutes } from './routes/products.js';
+import { createCategoryService } from './services/category-service.js';
 import { createProductService } from './services/product-service.js';
 
 export interface AppDeps {
@@ -24,6 +27,9 @@ export function createApp(deps: AppDeps) {
 
   const products = createProductService(createProductRepository(deps.db));
   app.route('/api/products', productRoutes(products));
+
+  const categories = createCategoryService(createCategoryRepository(deps.db));
+  app.route('/api/categories', categoryRoutes(categories));
 
   return app;
 }

@@ -2,7 +2,7 @@
 
 A full-stack product catalog: a Svelte 5 single-page app on top of a Hono + SQLite JSON API, in a pnpm TypeScript monorepo.
 
-> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete. The category endpoints and UI (B-11) and the custom feature (B-12) are not built yet. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
+> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete products, and add and remove categories. The custom feature (B-12) is not built yet. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
 
 ## Requirements
 
@@ -71,8 +71,9 @@ Base path `/api`, JSON only. Responses are wrapped: `{ "data": ... }`, plus `met
 | POST   | `/api/products`     | Server assigns `id` and timestamps. `201`.                                                                    |
 | PATCH  | `/api/products/:id` | Any non-empty subset of fields; refreshes `meta.updatedAt`.                                                   |
 | DELETE | `/api/products/:id` | `204`; `404` if absent.                                                                                       |
-| GET    | `/api/categories`   | Paginated, same envelope.                                                                                     |
-| POST   | `/api/categories`   | Creates a category from its slug. `409` on a duplicate.                                                       |
+| GET    | `/api/categories`   | Paginated, same envelope, ordered by slug. Each item is `{ "slug" }`.                                         |
+| POST   | `/api/categories`   | Creates a category from its slug. `201`; `409` on a duplicate.                                                |
+| DELETE | `/api/categories/:slug` | `204`; `404` if absent; `409` while any product still uses it.                                            |
 
 Errors share one shape, `{ "error": { "code", "message", "details" } }`, with codes `VALIDATION_ERROR` (400), `NOT_FOUND` (404), `CONFLICT` (409) and `INTERNAL_ERROR` (500). The full contract is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 3.
 
@@ -91,7 +92,8 @@ packages/shared Zod schemas        the single source of the product contract
 - **One error path.** `middleware/error-handler.ts` maps domain errors and Zod failures to the error envelope; no route hand-writes an error response.
 - **SPA shape.** One dashboard with a detail modal, because the catalog is a single workflow. Query state lives in a runes store (`catalog`) and is mirrored into the URL so a filtered view is shareable and the back button works. Only params that differ from the defaults are written to the URL, and an invalid link falls back to the default list. The search box is debounced by 300 ms.
 - **One modal for detail, create, edit and delete.** A native `<dialog>` gives Escape-to-close, a focus trap and focus restoration for free. A dialog store moves it between `detail`, `edit` and `delete` views. Opening a row shows the list's data at once and refreshes it in the background from `GET /api/products/:id`.
-- **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
+- **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Its category field is a select of the existing categories, read from the same store as the toolbar; edit keeps the product's current category as an option even if the list lacks it. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
+- **Categories are managed from the toolbar.** The category select is filled from `GET /api/categories` by a small `categories` store. Its "Manage" button opens a second dialog to add a category (one slug input) or remove one, with server errors shown inline. Removing the category the list is filtered by clears that filter.
 
 Why these choices (and what was rejected) is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 1.
 
@@ -106,6 +108,7 @@ The brief left these open; the choices are recorded here.
 - **Write checks run in a fixed order:** malformed JSON (`400`), schema validation (`400` with field-level `details`), category exists (`400` naming `category`), then sku uniqueness (`409`). A duplicate sku carries `details` naming `sku`, so the form shows it on the field. A product re-sending its own sku is not a conflict.
 - **PATCH writes only the fields sent.** The edit form computes the changed fields and sends nothing if nothing changed.
 - **Delete answers `204` once.** A second delete of the same id is `404`. Deleting a product never touches categories.
+- **A category in use cannot be removed.** `DELETE /api/categories/:slug` answers `409` while any product uses it, with `details` naming `category`. Products are never reassigned or deleted for you, which matches the `ON DELETE RESTRICT` foreign key; the service checks first so the error is a clean `409` rather than a constraint failure. The dialog therefore needs no confirm step: a remove can only succeed on an unused category.
 - **Page-based paging** rather than offset/limit, to support a numbered pager. Trade-off: page numbers shift if rows are inserted between requests, which is acceptable for a single-user local catalog.
 - **An oversized `pageSize` is rejected** with `400`, not silently clamped.
 - **Sort fields are whitelisted:** `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else is a `400`.
@@ -144,8 +147,8 @@ Seeding runs in one transaction and uses `ON CONFLICT DO NOTHING`. Re-running do
 ## Testing and CI
 
 - **Vitest** throughout, run from the root as one project per workspace package. The web project loads the Svelte plugin so runes in `*.svelte.ts` modules compile under test.
-- **API integration tests** run the real Hono app with `app.request()` against a throwaway SQLite file per suite, covering list, detail, create, update, delete and the query parameters.
-- **Unit tests** cover the shared schemas and stock helper, and on the web side the catalog and dialog stores, query-param and form helpers, and the API wrapper.
+- **API integration tests** run the real Hono app with `app.request()` against a throwaway SQLite file per suite, covering list, detail, create, update, delete, the query parameters and the categories endpoints.
+- **Unit tests** cover the shared schemas and stock helper, and on the web side the catalog, dialog and categories stores, query-param and form helpers, and the API wrapper.
 - **CI** (`.github/workflows/ci.yml`, on push and pull request): `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm audit`.
 - **Pre-commit hook** (`.husky/pre-commit`) runs `pnpm audit`. It needs network access, so a commit made offline fails; use `git commit --no-verify` only when offline, since CI still enforces the audit.
 
@@ -169,12 +172,17 @@ Working today, end to end (API and web):
 - Listing products with a numbered pager (B-06), and search, sort, category filtering and page size, mirrored into the URL (B-08).
 - A detail modal, and creating a product (B-07).
 - Editing and deleting a product from the modal (B-10).
+- Listing, adding and removing categories, with the toolbar's category select and the product form's category select both filled from the API (B-11).
 - The shared contract with its tests, and CI.
 
 Not built yet, in backlog order (see [`docs/backlog.md`](docs/backlog.md)):
 
-1. Categories endpoints and UI (B-11). Until then `GET /api/categories` and `POST /api/categories` answer "Not implemented yet", the toolbar's category select is disabled (a `?category=` in the URL still filters), and the product form takes the category as a free-text slug.
-2. The custom feature and the dashboard's metric strip (B-12), once decided.
+1. The custom feature and the dashboard's metric strip (B-12), once decided.
+
+Known limits of the categories slice:
+
+- The toolbar select, the product form's select and the manage dialog load at most 100 categories, the API's maximum page size. There is no paging in the UI. Editing a product whose category is missing from the list still works, because its current category is kept as an option.
+- A category cannot be created from inside the product form; add it from the toolbar's Manage dialog first.
 
 Smaller improvements found during reviews, such as a clearer message when the API is down and a visual design pass on the page, are collected in [`docs/improvement-opportunities.md`](docs/improvement-opportunities.md).
 

@@ -202,7 +202,7 @@ Web:
 - Query params are mirrored into the URL so a filtered view is shareable and the
   back button restores the previous query.
 - Changing any filter resets to page 1.
-- The category select is present but populated in B-11: it is disabled until then, although a `?category=` in the URL already filters the list.
+- The category select was disabled here and is populated from `GET /api/categories` in B-11; a `?category=` in the URL already filtered the list before that.
 
 ---
 
@@ -245,7 +245,7 @@ B-11 was unblocked by D-1; B-12 remains blocked on D-2.
 
 ### B-11 — Categories
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03, B-08
 
 API:
@@ -253,6 +253,9 @@ API:
 - `GET /api/categories` returns the paginated envelope.
 - `POST /api/categories` creates a category from its slug, validated with the
   shared slug schema; a duplicate slug returns `409 CONFLICT`.
+- `DELETE /api/categories/:slug` answers `204`; an unknown slug returns `404`,
+  and a category that any product still uses returns `409 CONFLICT` (no
+  reassign, no cascade).
 - `?category=` on the products list stays consistent with what the categories
   endpoint reports.
 - The wire contract (`category` as a string slug) is unchanged; the surrogate
@@ -263,6 +266,20 @@ Web:
 - The toolbar's category select is populated from `GET /api/categories` rather
   than hardcoded.
 - Selecting a category filters the list and is reflected in the URL.
+- A "Manage categories" dialog opened from the toolbar lists the categories with
+  a remove button each, plus one slug input to add. Server errors (duplicate on
+  add, in use on remove) show inline; remove has no confirm step because it can
+  only succeed on an unused category.
+- After an add or remove the toolbar select refreshes; removing the active
+  filter's category resets the filter.
+- The product form's category field (create and edit) is a select of the
+  existing categories from the same store, not free text. Create starts on a
+  "Select a category…" placeholder; edit starts on the product's current
+  category, kept as an option even if it is missing from the list. With no
+  categories, or if the list failed to load, the select shows a hint instead
+  (categories are added from the toolbar's dialog, not from the product form).
+  The client-side "is required" message and the mapping of server errors onto the
+  field are unchanged.
 
 ### B-12 — Custom feature and metric strip
 
