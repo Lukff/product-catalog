@@ -263,7 +263,13 @@ describe('brands migration', () => {
         { id: 2, sku: 'G-1', stock: 7, name: 'Globex' },
         { id: 3, sku: 'A-2', stock: 7, name: 'ACME' },
       ]);
-      expect(db.select().from(brands).all().map((brand) => brand.name)).toEqual(['ACME', 'Globex']);
+      expect(
+        db
+          .select()
+          .from(brands)
+          .all()
+          .map((brand) => brand.name),
+      ).toEqual(['ACME', 'Globex']);
       expect(db.$client.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
       db.$client.close();
     } finally {

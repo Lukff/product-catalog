@@ -392,7 +392,8 @@ function operationSpecs(): OperationSpec[] {
       path: '/api/brands',
       tag: 'Brands',
       summary: 'List brands',
-      description: 'A page of brands in alphabetical order, in the same envelope as the product list.',
+      description:
+        'A page of brands in alphabetical order, in the same envelope as the product list.',
       parameters: pageParams,
       success: { status: '200', description: 'A page of brands.', schema: 'BrandList' },
       errors: ['400', '500'],

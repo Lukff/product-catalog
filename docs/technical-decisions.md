@@ -100,7 +100,7 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/products` | Paginated. Query: `page`, `pageSize`, `q`, `category`, `stockStatus`, `sort`. |
+| GET | `/api/products` | Paginated. Query: `page`, `pageSize`, `q`, `category`, `brand`, `stockStatus`, `sort`. |
 | GET | `/api/products/stats` | Extended endpoint; catalog-wide `total`, `inStock`, `lowStock`, `outOfStock`, `inventoryValue`. Registered before `/:id`. |
 | GET | `/api/products/:id` | `404 NOT_FOUND` if absent. |
 | POST | `/api/products` | Full body; server assigns `id` and both timestamps. `201`. |
@@ -109,15 +109,19 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 | GET | `/api/categories` | Paginated list, same envelope. |
 | POST | `/api/categories` | Extended endpoint; creates a category from its slug. `409` on a duplicate slug. |
 | DELETE | `/api/categories/:slug` | Extended endpoint; `204`, empty body. `404` if absent, `409` while any product still uses it. |
+| GET | `/api/brands` | Extended endpoint; paginated list ordered by name, same envelope. |
+| POST | `/api/brands` | Extended endpoint; creates a brand from its name. `409` on a duplicate name. |
+| DELETE | `/api/brands/:name` | Extended endpoint; `204`, empty body. `404` if absent, `409` while any product still uses it. `:name` is URL-encoded. |
 
 - **Search** is `GET /api/products?q=flux`, not a separate `/search` route, so search composes with the category filter, sort, and pagination instead of duplicating that logic. Matching is a case-insensitive substring (`LIKE`) over `title` and `description`; `%` and `_` in the search text match themselves (escaped), not as wildcards. Blank `q` is ignored.
-- **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`. `title` sorts case-insensitively, and ties always fall back to `id` so pages never overlap or skip a row. An unknown `category` slug is a filter with no matches (an empty `200`), not an error.
+- **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`. `title` sorts case-insensitively, and ties always fall back to `id` so pages never overlap or skip a row. An unknown `category` slug is a filter with no matches (an empty `200`), not an error; so is an unknown `brand` name.
 - **PATCH only** (the brief permits PUT *or* PATCH). One write path means one validation schema and no ambiguity about whether omitted fields are cleared.
 - **Single-product path param (`:id`):** validated with `productIdParamSchema` from `packages/shared`. Non-numeric or fractional strings return `400 VALIDATION_ERROR` with message `'must be an integer'`; values below 1 return `'must be >= 1'`.
-- **POST `/api/products` order of checks:** request body JSON parsing (`400` with empty path and `'must be valid JSON'` if malformed) -> shared schema validation (`400` with field-level `details`) -> category existence check (`400` naming `category`) -> sku uniqueness check (`409`). Both timestamps are set to the same server clock ISO timestamp; `id` and client-sent timestamps are stripped.
-- **PATCH `/api/products/:id` order of checks:** path param `id` validation (`400`) -> request body JSON parsing (`400` with empty path and `'must be valid JSON'`) -> shared schema validation (`400` with field-level `details`, or `'must include at least one field'`) -> product exists (`404`) -> category existence check (`400` naming `category`) -> sku owned by another product (`409` with `details` naming `sku`). A product re-sending its own sku is not a conflict. Only the fields present in the patch are written and `updatedAt` is refreshed from the server clock; `id` and client-sent timestamps are stripped.
-- **DELETE `/api/products/:id`:** path param `id` validation (`400`) -> product deletion. Answers `204` with an empty body, and `404 NOT_FOUND` for an absent or already deleted id, with no cascade (categories are untouched).
+- **POST `/api/products` order of checks:** request body JSON parsing (`400` with empty path and `'must be valid JSON'` if malformed) -> shared schema validation (`400` with field-level `details`) -> category existence check (`400` naming `category`) -> brand existence check (`400` naming `brand`) -> sku uniqueness check (`409`). Both timestamps are set to the same server clock ISO timestamp; `id` and client-sent timestamps are stripped.
+- **PATCH `/api/products/:id` order of checks:** path param `id` validation (`400`) -> request body JSON parsing (`400` with empty path and `'must be valid JSON'`) -> shared schema validation (`400` with field-level `details`, or `'must include at least one field'`) -> product exists (`404`) -> category existence check (`400` naming `category`) -> brand existence check (`400` naming `brand`) -> sku owned by another product (`409` with `details` naming `sku`). A product re-sending its own sku is not a conflict. Only the fields present in the patch are written and `updatedAt` is refreshed from the server clock; `id` and client-sent timestamps are stripped.
+- **DELETE `/api/products/:id`:** path param `id` validation (`400`) -> product deletion. Answers `204` with an empty body, and `404 NOT_FOUND` for an absent or already deleted id, with no cascade (categories and brands are untouched).
 - **DELETE `/api/categories/:slug`:** path param `slug` validation with the shared slug schema (`400`) -> category exists (`404 NOT_FOUND`) -> no product uses it (`409 CONFLICT`, `details` naming `category`) -> deletion, answering `204` with an empty body. Removal never reassigns or deletes products; it matches the `ON DELETE RESTRICT` foreign key, and the service checks first so the error is a clean `409` rather than a constraint failure.
+- **DELETE `/api/brands/:name`:** the same flow as categories, keyed by name: path param `name` validation with the shared name schema (`400`; a name containing `/` is rejected, so the segment is unambiguous) -> brand exists (`404`) -> no product uses it (`409`, `details` naming `brand`) -> `204`. Names may contain spaces and are URL-encoded in the path. `POST /api/brands` answers `409` with `details` naming `name` for a duplicate; uniqueness is exact (case-sensitive), as for the `name` column's unique index.
 
 ### 3.3 Errors
 
@@ -144,7 +148,7 @@ Swagger UI is served at `/api/docs` and the raw OpenAPI 3.1 document at `/api/op
 - **Implementation status is derived, not maintained.** Each request reads `app.routes`; an operation with no registered route is flagged `x-implemented: false` and its description starts with "Not implemented yet". It flips on by itself when the route lands.
 - **Documentation is enforced.** A test fails if the real app registers a route that is missing from the document, so every API item that adds a route must add its operation to `apps/api/src/openapi/document.ts`.
 - **Examples are explicit.** Success bodies use the brief's sample products and each error status has its own example (a `409` never shows a validation error). Tests validate the request and success examples against the shared schemas, so they cannot rot.
-- **Categories on the wire are `{ slug }`** (`categorySchema` and `createCategorySchema` in `packages/shared`); the surrogate id is never exposed.
+- **Categories on the wire are `{ slug }`** (`categorySchema` and `createCategorySchema` in `packages/shared`); the surrogate id is never exposed. Brands are `{ name }` (`brandSchema` and `createBrandSchema`), likewise.
 - **Trade-off:** Swagger UI loads its JavaScript and CSS from the jsDelivr CDN, so the `/api/docs` page needs internet access. `/api/openapi.json` does not.
 
 Rejected: `@hono/zod-openapi` (routes must be written in its style, and the UI would be empty until B-06), and a hand-written `openapi.yaml` (duplicates the contract, which CLAUDE.md forbids).
@@ -161,7 +165,7 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 | `category` | string (slug) | required. Stored as `category_id`, an integer FK to `categories(id)` with `ON DELETE RESTRICT`; the wire value is the category's slug |
 | `price` | number | required, `>= 0`, 2-decimal currency |
 | `stock` | integer | required, `>= 0` |
-| `brand` | string | required |
+| `brand` | string (name) | required. Stored as `brand_id`, an integer FK to `brands(id)` with `ON DELETE RESTRICT`; the wire value is the brand's name |
 | `sku` | string | required, **unique** |
 | `weight` | number | required, `> 0` |
 | `meta.createdAt` | ISO 8601 string | server-owned |
@@ -171,14 +175,17 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 
 - `title`, `brand` and `sku` are trimmed and non-empty, with maximum lengths of 200, 100 and 64. `description` is 1-2000 characters and is not trimmed.
 - `category` must be a lowercase slug (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 50 characters).
+- A brand name (`brandNameSchema`, shared by the product `brand` field, the brand endpoints and the `brand` filter) must not contain `/`, because it travels in a path segment.
 - `price` is rejected if it has more than 2 decimal places; it is never rounded.
 - `PATCH` accepts any non-empty subset of the create fields; an empty body is a `400`.
 - `id` and `meta` are stripped from create and patch bodies rather than rejected.
-- A `category` slug that matches no row in `categories` is rejected with `400 VALIDATION_ERROR` naming `category`; a category is never created implicitly by a product write.
+- A `category` slug that matches no row in `categories` is rejected with `400 VALIDATION_ERROR` naming `category`; a category is never created implicitly by a product write. The same holds for `brand`: an unknown name is a `400` naming `brand`, and a brand is never created implicitly.
 
-**Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by the product service (`toProduct` in `services/product-service.ts`; routes may not import row types, so the mapping cannot live at the route boundary). The brief's JSON shape is preserved without a nested-object column. Likewise `category_id` is resolved to the category's slug on the way out, and the slug back to an id on the way in, so the wire contract never exposes the surrogate key.
+**Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by the product service (`toProduct` in `services/product-service.ts`; routes may not import row types, so the mapping cannot live at the route boundary). The brief's JSON shape is preserved without a nested-object column. Likewise `category_id` is resolved to the category's slug and `brand_id` to the brand's name on the way out, and back to ids on the way in, so the wire contract never exposes a surrogate key.
 
 **Categories:** `categories(id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE)`. A slug is the only attribute for now; a display name can be added by a later migration if the UI needs one. SQLite ignores foreign keys unless `PRAGMA foreign_keys = ON` is set on each connection, so `createDb()` does that. Deleting a category that still has products is refused (SQLite reports it as `SQLITE_CONSTRAINT_TRIGGER`; inserting a product for a missing category is `SQLITE_CONSTRAINT_FOREIGNKEY`).
+
+**Brands:** `brands(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE)`, modelled exactly like categories (B-17): `products.brand_id` is a foreign key with `ON DELETE RESTRICT`, and a brand still used by a product cannot be deleted. Unlike a category, a brand is identified by its human-readable name rather than a slug, because brand names ("Acme Corp") are display text and were already the wire value. Migration `0001_brands` is hand-edited: it creates `brands`, backfills it with the distinct `products.brand` values, then rebuilds `products` with `brand_id` pointing at the matching row, so an existing database keeps its data. (`drizzle-kit generate` would have dropped the text column without the backfill, and asks interactive rename questions, so the migration was started with `--custom` to get the snapshot and the SQL was written by hand; a test applies it to a legacy database.)
 
 **Migrations:** `pnpm --filter @catalog/api db:generate` runs drizzle-kit against `schema.ts` and writes SQL into `apps/api/src/db/migrations/`, which is committed. `pnpm db:migrate` applies pending migrations (creating the database file and its directory if absent) and is safe to re-run.
 
@@ -186,14 +193,14 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 
 **Seeding:** `apps/api/src/db/seed.ts` loads `apps/api/src/db/seed.json`: 36 whimsical ACME-style products in the brief's exact payload shape (explicit ids `1..N` and nested `meta`; rows 1 and 2 are the brief's own samples, verbatim) across 6 categories and 5 fictional brands, with 5 out-of-stock and 7 low-stock (1-5) products so filters and metrics have something to show. Every row is validated with the shared `productSchema` before anything is inserted, so bad seed data fails loudly and cannot drift from the contract.
 
-Run via `pnpm db:seed`, which applies pending migrations first, so a fresh checkout needs only that command. It creates each distinct category slug, then inserts the products with `category_id` resolved from the slug, inside one transaction. Both inserts use `ON CONFLICT DO NOTHING`, so re-running is safe: row counts do not change, an edit you made to a seeded product is never overwritten, and a seeded row you deleted comes back. The consequence is that editing `seed.json` later does not update rows that already exist; to reset, delete the database file and run `pnpm db:seed` again. Rejected: upserting by `sku` (would clobber edits) and wipe-and-reload (would delete products you created).
+Run via `pnpm db:seed`, which applies pending migrations first, so a fresh checkout needs only that command. It creates each distinct category slug and brand name, then inserts the products with `category_id` and `brand_id` resolved from them, inside one transaction. All inserts use `ON CONFLICT DO NOTHING`, so re-running is safe: row counts do not change, an edit you made to a seeded product is never overwritten, and a seeded row you deleted comes back. The consequence is that editing `seed.json` later does not update rows that already exist; to reset, delete the database file and run `pnpm db:seed` again. Rejected: upserting by `sku` (would clobber edits) and wipe-and-reload (would delete products you created).
 
 ## 5. SPA design
 
 A single dashboard view plus a detail modal - the catalog is one workflow, so navigation stays flat.
 
 - **Metric strip** - four tiles from `GET /api/products/stats`: Total, Low stock, Out of stock and Inventory value. The Low and Out tiles toggle the `stockStatus` filter (clicking the active tile clears it) and the strip refetches after a create, edit or delete.
-- **Toolbar** - debounced search box, category select, sort select, page-size select.
+- **Toolbar** - debounced search box, category select, brand select, sort select, page-size select. Each of the category and brand selects has a "Manage" button opening a dialog to add or remove entries. The product form's category and brand fields are selects fed by the same stores, not free text.
 - **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal. Stock status is derived, not sent by the API: `stockStatus()` in `packages/shared` returns `out` at 0, `low` from 1 to `LOW_STOCK_THRESHOLD` (5, matching the seed), otherwise `in`.
 - **Detail modal and dialog store** - the modal is a native `<dialog>` (`showModal()`), which supplies Escape-to-close, the focus trap, and focus restoration to the opener automatically. Opening a row shows the list's data immediately and refreshes it in the background from `GET /api/products/:id` (`ProductDialogStore` in `lib/stores/product-dialog.svelte.ts`). Edit and Delete work inside the same modal (`detail` -> `edit` / `delete` -> back to `detail`), waiting for the detail refresh so edits start from the server's copy.
 - **Product form** - one component for create and edit (`ProductForm.svelte`), validated client-side with the same Zod schema the API uses (`lib/product-form.ts`), so messages match. When editing, the form is pre-filled, computes and sends only changed fields, and sends nothing if nothing changed; on save success the list reloads and the modal shows the updated product. After a successful create, the list resets to newest-first (`sort: '-createdAt'`) with filters cleared and the modal shows the new product. The category field is a select of the existing categories, read from the same `categories` store as the toolbar (B-11): create starts on a "Select a category…" placeholder, edit starts on the product's current category, which stays an option even if the list lacks it (`categoryOptions` in `lib/product-form.ts`). With no categories, or if the list failed to load, the field shows a hint; categories are added from the toolbar's dialog, not from this form.

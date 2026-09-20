@@ -194,7 +194,9 @@ describe('brands API', () => {
   describe('products and brands', () => {
     it('agrees with the products filter: every reported brand filters to its products', async () => {
       for (const name of seededNames) {
-        const res = await app.request(`/api/products?brand=${encodeURIComponent(name)}&pageSize=100`);
+        const res = await app.request(
+          `/api/products?brand=${encodeURIComponent(name)}&pageSize=100`,
+        );
         const body = (await res.json()) as ListResponse<Product>;
         expect(body.meta.total, name).toBe(seed.filter((p) => p.brand === name).length);
         expect(
@@ -248,7 +250,9 @@ describe('brands API', () => {
 
       expect(res.status).toBe(400);
       expect(body.error.details?.map((detail) => detail.path)).toEqual(['brand']);
-      const after = (await (await app.request(`/api/products/${id}`)).json()) as ItemResponse<Product>;
+      const after = (await (
+        await app.request(`/api/products/${id}`)
+      ).json()) as ItemResponse<Product>;
       expect(after.data.brand).toBe(seed[0]!.brand);
       expect(await names()).toEqual(seededNames);
     });

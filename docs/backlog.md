@@ -305,7 +305,7 @@ Web:
 
 ### B-17 — Brands
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03, B-08, B-11
 
 Brand moves out of the product row into its own table, mirroring how B-11 modelled
@@ -320,9 +320,10 @@ API:
 - `GET /api/brands` returns the paginated envelope.
 - `POST /api/brands` creates a brand from its name, validated with a shared schema;
   a duplicate name returns `409 CONFLICT`.
-- `DELETE /api/brands/:id` answers `204`; an unknown brand returns `404`, and a
-  brand that any product still uses returns `409 CONFLICT` (no reassign, no
-  cascade).
+- `DELETE /api/brands/:name` (URL-encoded; the name rejects `/`) answers `204`; an
+  unknown brand returns `404`, and a brand that any product still uses returns
+  `409 CONFLICT` (no reassign, no cascade). It is keyed by name, not id, so the
+  surrogate id stays off the wire.
 - A product write with a `brand` that matches no brand returns `400
   VALIDATION_ERROR` with `details` naming `brand`; a product write never creates a
   brand.
