@@ -1,4 +1,5 @@
-import { asc, count, eq } from 'drizzle-orm';
+import type { ParsedSort, SortField } from '@catalog/shared';
+import { and, asc, count, desc, eq, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { categories, products } from '../db/schema.js';
 
@@ -17,15 +18,65 @@ export interface ProductRecord {
   updatedAt: string;
 }
 
+export interface ListOptions {
+  limit: number;
+  offset: number;
+  /** Case-insensitive substring matched against title and description. */
+  q?: string | undefined;
+  /** Category slug. */
+  category?: string | undefined;
+  /** Defaults to id ascending. Ties always fall back to id, so paging is stable. */
+  sort?: ParsedSort | undefined;
+}
+
 export interface ProductPage {
   rows: ProductRecord[];
   total: number;
 }
 
+const sortColumns: Record<SortField, AnyColumn | SQL> = {
+  // Alphabetical order should not depend on letter case.
+  title: sql`${products.title} COLLATE NOCASE`,
+  price: products.price,
+  stock: products.stock,
+  weight: products.weight,
+  createdAt: products.createdAt,
+  updatedAt: products.updatedAt,
+};
+
+/** LIKE escape character. `%` and `_` are wildcards; escaping them makes a search for "50%" match the text "50%". */
+const LIKE_ESCAPE = '\\';
+
+function containsPattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (char) => LIKE_ESCAPE + char)}%`;
+}
+
+function whereClause({ q, category }: Pick<ListOptions, 'q' | 'category'>): SQL | undefined {
+  const conditions: (SQL | undefined)[] = [];
+
+  if (q) {
+    const pattern = containsPattern(q);
+    conditions.push(
+      or(
+        sql`${products.title} LIKE ${pattern} ESCAPE ${LIKE_ESCAPE}`,
+        sql`${products.description} LIKE ${pattern} ESCAPE ${LIKE_ESCAPE}`,
+      ),
+    );
+  }
+  if (category) conditions.push(eq(categories.slug, category));
+
+  return and(...conditions);
+}
+
 export function createProductRepository(db: Db) {
   return {
-    /** One page of products in a stable order (by id), plus the total row count. */
-    list({ limit, offset }: { limit: number; offset: number }): ProductPage {
+    /** One page of the products matching the filters, plus the total number of matches. */
+    list({ limit, offset, q, category, sort }: ListOptions): ProductPage {
+      const where = whereClause({ q, category });
+      const orderBy = sort
+        ? [(sort.direction === 'desc' ? desc : asc)(sortColumns[sort.field]), asc(products.id)]
+        : [asc(products.id)];
+
       const rows = db
         .select({
           id: products.id,
@@ -42,12 +93,19 @@ export function createProductRepository(db: Db) {
         })
         .from(products)
         .innerJoin(categories, eq(products.categoryId, categories.id))
-        .orderBy(asc(products.id))
+        .where(where)
+        .orderBy(...orderBy)
         .limit(limit)
         .offset(offset)
         .all();
 
-      const total = db.select({ total: count() }).from(products).get()?.total ?? 0;
+      const total =
+        db
+          .select({ total: count() })
+          .from(products)
+          .innerJoin(categories, eq(products.categoryId, categories.id))
+          .where(where)
+          .get()?.total ?? 0;
 
       return { rows, total };
     },
