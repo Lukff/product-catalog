@@ -455,14 +455,14 @@ Web:
 
 ### B-20 — Money handling
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03, B-12
 
 Today `price` is a floating-point number end to end, kept to 2 decimals only by a
 validation rule. Sums such as `inventoryValue` (B-12) and any future arithmetic
 inherit binary floating-point error. Replace this with a representation that is exact.
-The approach below is a proposal; confirm it before implementing, and update
-`technical-decisions.md` (§4 field rules, data model) in the same change.
+The approach below was confirmed and implemented; `technical-decisions.md` (§4) was
+updated in the same change.
 
 - Store `price` as an integer count of minor units (cents) in SQLite; migration
   converts existing rows and `pnpm db:migrate` works from a clean checkout.
@@ -479,8 +479,8 @@ The approach below is a proposal; confirm it before implementing, and update
 - Tests: unit tests for the helper on awkward values (`0.1 + 0.2`, `1.005`, large
   values, `0`); an integration test that `inventoryValue` is exact for a set of
   products whose float sum would drift; a round-trip test through create and read.
-- Open question to settle first: whether currency stays implicit (single currency)
-  or becomes a field. Default is implicit, out of scope here.
+- Decided: currency stays implicit (single currency, USD); a currency field is out of
+  scope.
 
 ---
 

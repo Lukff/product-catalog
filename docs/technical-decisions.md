@@ -164,7 +164,7 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 | `title` | string | required, 1-200 chars |
 | `description` | string | required, up to 2000 chars |
 | `category` | string (slug) | required. Stored as `category_id`, an integer FK to `categories(id)` with `ON DELETE RESTRICT`; the wire value is the category's slug |
-| `price` | number | required, `>= 0`, 2-decimal currency |
+| `price` | number | required, `>= 0`, 2-decimal currency. Stored as `price_cents`, an integer number of cents; the wire value is the decimal |
 | `stock` | integer | required, `>= 0` |
 | `brand` | string (name) | required. Stored as `brand_id`, an integer FK to `brands(id)` with `ON DELETE RESTRICT`; the wire value is the brand's name |
 | `sku` | string | required, **unique** |
@@ -177,7 +177,8 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 - `title`, `brand` and `sku` are trimmed and non-empty, with maximum lengths of 200, 100 and 64. `description` is 1-2000 characters and is not trimmed.
 - `category` must be a lowercase slug (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 50 characters).
 - A brand name (`brandNameSchema`, shared by the product `brand` field, the brand endpoints and the `brand` filter) must not contain `/`, because it travels in a path segment.
-- `price` is rejected if it has more than 2 decimal places; it is never rounded.
+- `price` is rejected if it has more than 2 decimal places or is too large to hold as a safe integer number of cents (`isMoney`); it is never rounded.
+- **Money is integer cents internally** (B-20). The wire keeps the brief's decimal number (`19.99`); `toCents` / `fromCents` in `packages/shared/src/money.ts` are the only place the two forms convert, and the API converts in the service layer, so repositories deal in cents only. `inventoryValue` is summed in cents in SQL and converted once on the way out, so it is exact. `formatMoney` is the one display formatter. Currency is a single implicit currency (USD); a currency field is out of scope.
 - `PATCH` accepts any non-empty subset of the create fields; an empty body is a `400`.
 - `id` and `meta` are stripped from create and patch bodies rather than rejected.
 - A `category` slug that matches no row in `categories` is rejected with `400 VALIDATION_ERROR` naming `category`; a category is never created implicitly by a product write. The same holds for `brand`: an unknown name is a `400` naming `brand`, and a brand is never created implicitly.
