@@ -6,6 +6,7 @@
   import { paramsFromSearch, paramsToSearch } from '../lib/query-params.js';
   import { catalog } from '../lib/stores/catalog.svelte.js';
   import { productDialog } from '../lib/stores/product-dialog.svelte.js';
+  import CategoryManager from './CategoryManager.svelte';
   import ProductDialog from './ProductDialog.svelte';
 
   // A shared link opens straight onto its query.
@@ -121,4 +122,5 @@
   </div>
 
   <ProductDialog />
+  <CategoryManager />
 </section>

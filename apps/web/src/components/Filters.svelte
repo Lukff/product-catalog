@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { SortParam } from '@catalog/shared';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { catalog } from '../lib/stores/catalog.svelte.js';
+  import { categories } from '../lib/stores/categories.svelte.js';
 
   const SEARCH_DEBOUNCE_MS = 300;
 
@@ -29,6 +30,7 @@
     }, SEARCH_DEBOUNCE_MS);
   }
 
+  onMount(() => void categories.load());
   onDestroy(() => clearTimeout(timer));
 </script>
 
@@ -52,17 +54,30 @@
 
   <div>
     <label for="category" class="block text-xs font-medium text-slate-600">Category</label>
-    <!-- Populated from GET /api/categories in B-11. -->
-    <select
-      id="category"
-      class="mt-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:bg-slate-100"
-      disabled
-    >
-      <option value="">All categories</option>
-      {#if catalog.params.category}
-        <option value={catalog.params.category} selected>{catalog.params.category}</option>
-      {/if}
-    </select>
+    <div class="mt-1 flex gap-2">
+      <select
+        id="category"
+        class="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        value={catalog.params.category}
+        onchange={(event) => void catalog.update({ category: event.currentTarget.value })}
+      >
+        <option value="">All categories</option>
+        {#each categories.slugs as slug (slug)}
+          <option value={slug}>{slug}</option>
+        {/each}
+        <!-- A ?category= in the URL that is not (or not yet) in the list is still shown. -->
+        {#if catalog.params.category && !categories.slugs.includes(catalog.params.category)}
+          <option value={catalog.params.category}>{catalog.params.category}</option>
+        {/if}
+      </select>
+      <button
+        type="button"
+        class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
+        onclick={() => categories.openManager()}
+      >
+        Manage
+      </button>
+    </div>
   </div>
 
   <div>
