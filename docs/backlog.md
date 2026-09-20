@@ -245,7 +245,7 @@ B-11 was unblocked by D-1; B-12 remains blocked on D-2.
 
 ### B-11 — Categories
 
-**Status:** Done
+**Status:** In progress
 **Depends on:** B-03, B-08
 
 API:
@@ -272,8 +272,14 @@ Web:
   only succeed on an unused category.
 - After an add or remove the toolbar select refreshes; removing the active
   filter's category resets the filter.
-- Out of scope: turning the product form's free-text category field into a
-  dropdown.
+- The product form's category field (create and edit) is a select of the
+  existing categories from the same store, not free text. Create starts on a
+  "Select a category…" placeholder; edit starts on the product's current
+  category, kept as an option even if it is missing from the list. With no
+  categories, or if the list failed to load, the select shows a hint instead
+  (categories are added from the toolbar's dialog, not from the product form).
+  The client-side "is required" message and the mapping of server errors onto the
+  field are unchanged.
 
 ### B-12 — Custom feature and metric strip
 
