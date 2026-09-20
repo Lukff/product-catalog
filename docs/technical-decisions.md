@@ -107,8 +107,8 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 | GET | `/api/categories` | Paginated list, same envelope. |
 | POST | `/api/categories` | Extended endpoint; creates a category from its slug. `409` on a duplicate slug. |
 
-- **Search** is `GET /api/products?q=flux`, not a separate `/search` route, so search composes with the category filter, sort, and pagination instead of duplicating that logic. Matching is a case-insensitive substring (`LIKE`) over `title` and `description`.
-- **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`.
+- **Search** is `GET /api/products?q=flux`, not a separate `/search` route, so search composes with the category filter, sort, and pagination instead of duplicating that logic. Matching is a case-insensitive substring (`LIKE`) over `title` and `description`; `%` and `_` in the search text match themselves (escaped), not as wildcards. Blank `q` is ignored.
+- **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`. `title` sorts case-insensitively, and ties always fall back to `id` so pages never overlap or skip a row. An unknown `category` slug is a filter with no matches (an empty `200`), not an error.
 - **PATCH only** (the brief permits PUT *or* PATCH). One write path means one validation schema and no ambiguity about whether omitted fields are cleared.
 
 ### 3.3 Errors
@@ -190,7 +190,7 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 - **Detail modal** - full record, with Edit and Delete actions.
 - **Product form** - one component for create and edit, validated client-side with the same Zod schema the API uses, so messages match.
 - **Delete** - confirmation step; destructive actions are never one click.
-- **State** - Svelte 5 runes (`$state`, `$derived`) in a small `catalog` store holding query params and results. Query params are mirrored into the URL so a filtered view is shareable and the back button behaves.
+- **State** - Svelte 5 runes (`$state`, `$derived`) in a small `catalog` store holding query params and results. Query params are mirrored into the URL (`lib/query-params.ts`) so a filtered view is shareable and the back button behaves: only params that differ from the defaults are written, each change adds a history entry, `popstate` re-applies the URL, and an invalid link falls back to the default list. Any filter change goes back to page 1. The search box is debounced (300 ms); while a new page loads the previous rows stay on screen, dimmed.
 - **Loading, error and empty states** are explicit for the list and every mutation; API error `details` map back onto the offending form fields.
 
 ## 6. Testing and CI

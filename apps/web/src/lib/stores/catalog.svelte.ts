@@ -1,23 +1,30 @@
-import { DEFAULT_PAGE_SIZE, type PageMeta, type Product } from '@catalog/shared';
+import type { PageMeta, Product } from '@catalog/shared';
 import { api, ApiError } from '../api.js';
+import { DEFAULT_PARAMS, type CatalogParams } from '../query-params.js';
 
 export type CatalogStatus = 'loading' | 'ready' | 'error';
 
-/** Query state that drives the list. Search, sort and category join it in B-08. */
-export interface CatalogParams {
-  page: number;
-  pageSize: number;
-}
-
 /** Query params and results for the product list. */
 export class CatalogStore {
-  params = $state<CatalogParams>({ page: 1, pageSize: DEFAULT_PAGE_SIZE });
+  params = $state<CatalogParams>({ ...DEFAULT_PARAMS });
   status = $state<CatalogStatus>('loading');
   products = $state<Product[]>([]);
   meta = $state<PageMeta | null>(null);
   error = $state<ApiError | null>(null);
 
   #inFlight: AbortController | undefined;
+
+  /** Changes some params and reloads. Any change but a page turn goes back to page 1. */
+  update(patch: Partial<CatalogParams>): Promise<void> {
+    this.params = { ...this.params, page: 1, ...patch };
+    return this.load();
+  }
+
+  /** Replaces every param at once, as when the URL changes under back/forward navigation. */
+  applyParams(params: CatalogParams): Promise<void> {
+    this.params = { ...params };
+    return this.load();
+  }
 
   /** Fetches the list for the current params. A newer call supersedes an older one. */
   async load(): Promise<void> {
@@ -30,7 +37,13 @@ export class CatalogStore {
 
     try {
       const response = await api.list<Product>('/products', {
-        query: { page: this.params.page, pageSize: this.params.pageSize },
+        query: {
+          page: this.params.page,
+          pageSize: this.params.pageSize,
+          q: this.params.q,
+          category: this.params.category,
+          sort: this.params.sort,
+        },
         signal: request.signal,
       });
       if (request.signal.aborted) return;

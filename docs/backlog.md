@@ -160,7 +160,7 @@ Web:
 
 ### B-08 — Search, sort, filter and pagination
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-06
 
 API:
@@ -174,7 +174,7 @@ API:
   correct `meta.total`.
 - Integration tests cover case-insensitive description match, `-price` ordering
   and the rejected sort field.
-- Replaces B-06's fixed `id` order and applies `q`, `category` and `sort` in the repository.
+- Replaces B-06's fixed `id` order and applies `q`, `category` and `sort` in the repository. Ties always fall back to `id`, so paging is stable.
 
 Web:
 
@@ -184,7 +184,7 @@ Web:
 - Query params are mirrored into the URL so a filtered view is shareable and the
   back button restores the previous query.
 - Changing any filter resets to page 1.
-- The category select is present but populated in B-11.
+- The category select is present but populated in B-11: it is disabled until then, although a `?category=` in the URL already filters the list.
 
 ---
 

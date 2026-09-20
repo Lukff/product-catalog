@@ -282,3 +282,26 @@ memory for this repo.
 **Reflection:** All the scaffolding for the workflow and the PRs were a good approach for
 structuring, but it ended up costing too much time, so we are going more directly to
 implementation now for practical reasons.
+
+## 2026-09-20 — Search, sort, filter and pagination (B-08)
+
+**Context:** B-06 was merged, so the list endpoint and dashboard existed with pagination
+only. B-08 depends only on B-06 and adds the rest of the list query, `q`, `category` and
+`sort` on the API and the controls on the web side. It was the first item run under the
+lighter workflow from the previous entry.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "let's do B-08 next". There was
+no brainstorming step, plan document or subagents: the model made a branch, wrote the
+tests first, then the code, and checked the result in a real browser with Playwright.
+
+**What happened:** The model did the API first: `q` over title and description with `%` and
+`_` matched literally, the category filter, and whitelisted sorts with ties broken by id so
+pages stay stable, with tests that compute the expected results from the seed instead of
+hard-coding them. The web side added a debounced search box, sort and page-size selects, a
+numbered pager and URL mirroring with Back support. In the browser check the URL params,
+Back button, last-page pager and no-results state all worked. Along the way one scripted
+edit misplaced a constant in the repository and mangled a backslash escape, and the
+typecheck caught `toSorted` missing from the ES2022 lib, so the model fixed both before
+committing. The category select is disabled until B-11, as the backlog says.
+
+**Reflection:** It worked faster without the additional PR.

@@ -168,4 +168,66 @@ describe('CatalogStore', () => {
     expect(signals[0]?.aborted).toBe(true);
     expect(signals[1]?.aborted).toBe(false);
   });
+
+  it('sends the search, category and sort params when they are set', async () => {
+    const fetchMock = vi.fn(async (_url: string) => json(page([product(1)])));
+    vi.stubGlobal('fetch', fetchMock);
+    const store = new CatalogStore();
+
+    await store.update({ q: 'flux', category: 'kitchen', sort: '-price' });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/products?page=1&pageSize=30&q=flux&category=kitchen&sort=-price',
+    );
+  });
+
+  it('goes back to page 1 whenever a filter changes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(page([product(1)]))),
+    );
+    const store = new CatalogStore();
+    await store.update({ page: 4 });
+    expect(store.params.page).toBe(4);
+
+    await store.update({ q: 'flux' });
+    expect(store.params.page).toBe(1);
+
+    await store.update({ page: 3 });
+    await store.update({ pageSize: 10 });
+    expect(store.params.page).toBe(1);
+    expect(store.params.pageSize).toBe(10);
+  });
+
+  it('keeps the previous rows while a new page loads', async () => {
+    const next = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(json(page([product(1)])))
+        .mockReturnValueOnce(next.promise),
+    );
+    const store = new CatalogStore();
+    await store.load();
+
+    const loading = store.update({ page: 2 });
+
+    expect(store.status).toBe('loading');
+    expect(store.products.map((item) => item.id)).toEqual([1]);
+    next.resolve(json(page([product(2)])));
+    await loading;
+    expect(store.products.map((item) => item.id)).toEqual([2]);
+  });
+
+  it('applies params from the URL and loads them', async () => {
+    const fetchMock = vi.fn(async (_url: string) => json(page([product(1)])));
+    vi.stubGlobal('fetch', fetchMock);
+    const store = new CatalogStore();
+
+    await store.applyParams({ page: 2, pageSize: 10, q: 'a', category: '', sort: '' });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/products?page=2&pageSize=10&q=a');
+    expect(store.params).toEqual({ page: 2, pageSize: 10, q: 'a', category: '', sort: '' });
+  });
 });
