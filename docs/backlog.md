@@ -123,8 +123,7 @@ problem, persona and rationale.
 API:
 
 - `GET /api/products` returns the envelope with `data` and `meta`.
-- Defaults to `pageSize` 30; `pageSize` above 100 is rejected or capped per the
-  shared schema.
+- Defaults to `pageSize` 30; `pageSize` above 100 is rejected with `400 VALIDATION_ERROR`, never clamped.
 - `meta.total` is the count after filters and before pagination;
   `meta.totalPages` is consistent with it.
 - Integration test asserts the default page size and the `meta` values.

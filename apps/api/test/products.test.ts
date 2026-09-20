@@ -86,6 +86,7 @@ describe('GET /api/products', () => {
     const { body } = await getList(app);
     const first = body.data[0];
     const expected = seed.find((product) => product.id === 1);
+    expect(expected).toBeDefined();
 
     expect(first).toEqual(expected);
     for (const item of body.data) {
