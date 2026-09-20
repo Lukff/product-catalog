@@ -202,7 +202,7 @@ Web:
 - Query params are mirrored into the URL so a filtered view is shareable and the
   back button restores the previous query.
 - Changing any filter resets to page 1.
-- The category select is present but populated in B-11: it is disabled until then, although a `?category=` in the URL already filters the list.
+- The category select was disabled here and is populated from `GET /api/categories` in B-11; a `?category=` in the URL already filtered the list before that.
 
 ---
 
@@ -245,7 +245,7 @@ B-11 was unblocked by D-1; B-12 remains blocked on D-2.
 
 ### B-11 — Categories
 
-**Status:** In progress
+**Status:** Done
 **Depends on:** B-03, B-08
 
 API:
