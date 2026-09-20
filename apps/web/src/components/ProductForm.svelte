@@ -1,20 +1,26 @@
 <script lang="ts">
-  import type { CreateProductInput } from '@catalog/shared';
+  import type { CreateProductInput, Product } from '@catalog/shared';
   import { tick } from 'svelte';
   import { ApiError } from '../lib/api.js';
   import {
     detailsToFieldErrors,
     EMPTY_VALUES,
     validateProductForm,
+    valuesFromProduct,
     type FieldErrors,
     type FormField,
     type ProductFormValues,
   } from '../lib/product-form.js';
 
   let {
+    product,
     onsubmit,
     oncancel,
-  }: { onsubmit: (input: CreateProductInput) => Promise<void>; oncancel: () => void } = $props();
+  }: {
+    product?: Product;
+    onsubmit: (input: CreateProductInput) => Promise<void>;
+    oncancel: () => void;
+  } = $props();
 
   interface FieldSpec {
     name: FormField;
@@ -40,10 +46,21 @@
   ];
 
   let form: HTMLFormElement;
-  let values = $state<ProductFormValues>({ ...EMPTY_VALUES });
+  // The form is filled in once, when it opens; later changes to `product` must not overwrite what
+  // the user is typing.
+  // svelte-ignore state_referenced_locally
+  let values = $state<ProductFormValues>(
+    product ? valuesFromProduct(product) : { ...EMPTY_VALUES },
+  );
   let errors = $state<FieldErrors>({});
   let formError = $state('');
   let pending = $state(false);
+
+  const editing = $derived(product !== undefined);
+
+  $effect(() => {
+    form.querySelector<HTMLElement>('input, textarea')?.focus();
+  });
 
   async function focusFirstError() {
     await tick();
@@ -141,7 +158,11 @@
       class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
       disabled={pending}
     >
-      {pending ? 'Creating…' : 'Create product'}
+      {#if pending}
+        {editing ? 'Saving…' : 'Creating…'}
+      {:else}
+        {editing ? 'Save changes' : 'Create product'}
+      {/if}
     </button>
   </div>
 </form>
