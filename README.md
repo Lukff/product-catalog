@@ -2,7 +2,7 @@
 
 A full-stack product catalog: a Svelte 5 single-page app on top of a Hono + SQLite JSON API, in a pnpm TypeScript monorepo.
 
-> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete products, and add and remove categories. The custom feature (B-12) is not built yet. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
+> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete products, and add and remove categories, plus low-stock alerts with inventory metrics as the custom feature. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
 
 ## Requirements
 
@@ -66,7 +66,8 @@ Base path `/api`, JSON only. Responses are wrapped: `{ "data": ... }`, plus `met
 
 | Method | Path                | Notes                                                                                                         |
 | ------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/products`     | Paginated. Query: `page`, `pageSize` (default 30, max 100), `q`, `category`, `sort` (for example `-price`).    |
+| GET    | `/api/products`     | Paginated. Query: `page`, `pageSize` (default 30, max 100), `q`, `category`, `stockStatus` (`out`, `low` or `in`), `sort` (for example `-price`).    |
+| GET    | `/api/products/stats` | Catalog-wide counts by stock status and the inventory value (`price * stock`).                              |
 | GET    | `/api/products/:id` | `404` if absent; a non-numeric id is a `400`.                                                                 |
 | POST   | `/api/products`     | Server assigns `id` and timestamps. `201`.                                                                    |
 | PATCH  | `/api/products/:id` | Any non-empty subset of fields; refreshes `meta.updatedAt`.                                                   |
@@ -154,14 +155,19 @@ Seeding runs in one transaction and uses `ON CONFLICT DO NOTHING`. Re-running do
 
 ## Custom feature
 
-**Not decided yet.** The brief requires at least one unprompted feature, documented with problem, persona and rationale. Candidates under consideration are low-stock alerts with inventory metrics, an audit log of mutations, bulk operations, and CSV import or export. The seed data already includes out-of-stock and low-stock rows, which favours the inventory-metrics candidate, but nothing is committed to.
+**Low-stock alerts with inventory metrics.** The brief requires at least one unprompted feature.
 
-This section will be filled in with the problem it solves, the intended persona and why it was chosen once the decision is made. The choice also fixes the contents of the dashboard's metric strip.
+- **Problem.** With a catalog of a few dozen products, nobody can see at a glance what needs reordering. Finding low or empty stock means sorting by stock and reading the table.
+- **Persona.** A stock manager who checks the catalog to decide what to reorder.
+- **What it does.** A metric strip above the table shows the total product count, the number of low-stock and out-of-stock products, and the inventory value (`price * stock`). The Low stock and Out of stock tiles are toggle buttons: pressing one filters the table to those products, and pressing it again clears the filter. The filter is mirrored into the URL (`?stockStatus=low`), so a view can be shared, and it composes with search, category, sort and paging. The strip refreshes after every create, edit and delete.
+- **API.** `GET /api/products/stats` returns `total`, `inStock`, `lowStock`, `outOfStock` and `inventoryValue`. `GET /api/products` accepts `stockStatus=low|out|in`, and any other value is a `400 VALIDATION_ERROR`. Both are in the Swagger UI.
+- **Why this one.** It was the simplest option and builds directly on what already existed: the stock status rule, the seed's low and empty rows, and the list query. It needs one aggregate query and no new table or migration. It also gave the metric strip its content. Rejected: an audit log (there is no authentication, so "who changed it" is meaningless, and it needs a table and a write in every mutation), bulk operations (transaction and partial-failure rules, and the most UI work) and CSV export (little value on its own, and the strip would still need content).
+- **Design choices.** The stats are catalog-wide, not scoped to the search or category, so the strip stays a stable overview. The SQL for the low and out bands uses `LOW_STOCK_THRESHOLD` from `packages/shared`, the same constant `stockStatus()` uses, so the counts cannot drift from the badges in the table. Creating a product also clears the stock filter, so the new row is never hidden.
+- **Out of scope.** A configurable threshold, notifications and history of stock levels.
 
 ## Open questions
 
-- **Custom feature** (above): the one unresolved product decision. Code it affects is deliberately not written yet.
-- **Low-stock threshold.** It is a constant (5) in `packages/shared`, used by the table's stock badge and chosen to match the seed data. If the custom feature turns on it, it may need to become configurable, for example an environment variable.
+- **Low-stock threshold.** It is a constant (5) in `packages/shared`, used by the table's stock badge, the `stockStatus` filter and the stats, and chosen to match the seed data. A stock manager may want it per product or per category, which would need a column or a setting.
 - **Category display names.** A category is only a slug today. A display name can be added by a later migration if the UI needs one.
 
 ## Status and next steps
@@ -173,11 +179,10 @@ Working today, end to end (API and web):
 - A detail modal, and creating a product (B-07).
 - Editing and deleting a product from the modal (B-10).
 - Listing, adding and removing categories, with the toolbar's category select and the product form's category select both filled from the API (B-11).
+- The custom feature: the metric strip, the Low stock and Out of stock filter tiles and `GET /api/products/stats` (B-12).
 - The shared contract with its tests, and CI.
 
-Not built yet, in backlog order (see [`docs/backlog.md`](docs/backlog.md)):
-
-1. The custom feature and the dashboard's metric strip (B-12), once decided.
+Everything in the backlog's product phases is built (see [`docs/backlog.md`](docs/backlog.md)).
 
 Known limits of the categories slice:
 

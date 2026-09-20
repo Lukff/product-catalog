@@ -1,5 +1,6 @@
 import {
   ERROR_CODES,
+  LOW_STOCK_THRESHOLD,
   categorySchema,
   categorySlugParamSchema,
   createCategorySchema,
@@ -7,6 +8,7 @@ import {
   listQuerySchema,
   patchProductSchema,
   productSchema,
+  productStatsSchema,
 } from '@catalog/shared';
 import { jsonSchema, type Schema } from './json-schema.js';
 
@@ -55,6 +57,9 @@ const pageMeta = (total: number) => ({ page: 1, pageSize: 30, total, totalPages:
 const SUCCESS_EXAMPLES: Record<string, unknown> = {
   ProductResponse: { data: PRODUCT_EXAMPLES[0] },
   ProductList: { data: PRODUCT_EXAMPLES, meta: pageMeta(PRODUCT_EXAMPLES.length) },
+  ProductStatsResponse: {
+    data: { total: 36, inStock: 24, lowStock: 7, outOfStock: 5, inventoryValue: 18432.75 },
+  },
   CategoryResponse: { data: { slug: 'automotive' } },
   CategoryList: { data: [{ slug: 'automotive' }, { slug: 'kitchen' }], meta: pageMeta(2) },
 };
@@ -76,6 +81,7 @@ function componentSchemas(): Record<string, Schema> {
     Product: jsonSchema(productSchema, 'output'),
     CreateProduct: jsonSchema(createProductSchema, 'input'),
     PatchProduct: { ...jsonSchema(patchProductSchema, 'input'), minProperties: 1 },
+    ProductStats: jsonSchema(productStatsSchema, 'output'),
     Category: jsonSchema(categorySchema, 'output'),
     CreateCategory: jsonSchema(createCategorySchema, 'input'),
     PageMeta: {
@@ -91,6 +97,7 @@ function componentSchemas(): Record<string, Schema> {
     },
     ProductResponse: item('Product'),
     ProductList: list('Product'),
+    ProductStatsResponse: item('ProductStats'),
     CategoryResponse: item('Category'),
     CategoryList: list('Category'),
     Error: {
@@ -223,10 +230,28 @@ function operationSpecs(): OperationSpec[] {
         ...pageParams,
         queryParam('q', 'Case-insensitive substring match over title and description.'),
         queryParam('category', 'Only products in this category (slug).'),
+        queryParam(
+          'stockStatus',
+          `Only products in this stock band: \`out\` is 0 units, \`low\` is 1 up to ${LOW_STOCK_THRESHOLD}, ` +
+            `\`in\` is more than ${LOW_STOCK_THRESHOLD}.`,
+        ),
         queryParam('sort', 'Sort field; a leading `-` sorts descending, for example `-price`.'),
       ],
       success: { status: '200', description: 'A page of products.', schema: 'ProductList' },
       errors: ['400', '500'],
+    },
+    {
+      method: 'get',
+      path: '/api/products/stats',
+      tag: 'Products',
+      summary: 'Get catalog stats',
+      description:
+        'Catalog-wide headline numbers: the product count by stock status and the value of the ' +
+        'stock on hand (`price * stock`, rounded to 2 decimals). Not scoped by search or ' +
+        'category, so it stays a stable overview. The stock bands are the ones the ' +
+        '`stockStatus` list filter uses.',
+      success: { status: '200', description: 'The catalog stats.', schema: 'ProductStatsResponse' },
+      errors: ['500'],
     },
     {
       method: 'post',

@@ -282,7 +282,7 @@ Web:
 
 ### B-12 — Custom feature and metric strip
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-06, D-2
 
 - API: `GET /api/products/stats` returns `{ data: { total, inStock, lowStock,

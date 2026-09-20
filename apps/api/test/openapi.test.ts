@@ -40,6 +40,7 @@ const EXPECTED_OPERATIONS = [
   'DELETE /api/products/{id}',
   'GET /api/categories',
   'GET /api/products',
+  'GET /api/products/stats',
   'GET /api/products/{id}',
   'PATCH /api/products/{id}',
   'POST /api/categories',
@@ -48,6 +49,7 @@ const EXPECTED_OPERATIONS = [
 
 const EXPECTED_STATUSES: Record<string, string[]> = {
   'GET /api/products': ['200', '400', '500'],
+  'GET /api/products/stats': ['200', '500'],
   'POST /api/products': ['201', '400', '409', '500'],
   'GET /api/products/{id}': ['200', '400', '404', '500'],
   'PATCH /api/products/{id}': ['200', '400', '404', '409', '500'],
@@ -60,6 +62,7 @@ const EXPECTED_STATUSES: Record<string, string[]> = {
 /** Operations whose route exists in the real app. Add each one here as its backlog item lands. */
 const IMPLEMENTED_OPERATIONS = new Set([
   'GET /api/products',
+  'GET /api/products/stats',
   'GET /api/products/{id}',
   'POST /api/products',
   'PATCH /api/products/{id}',
@@ -255,7 +258,14 @@ describe('operations', () => {
     const params = operations(doc).get('GET /api/products')?.parameters ?? [];
     const byName = Object.fromEntries(params.map((param) => [param.name, param]));
 
-    expect(Object.keys(byName).sort()).toEqual(['category', 'page', 'pageSize', 'q', 'sort']);
+    expect(Object.keys(byName).sort()).toEqual([
+      'category',
+      'page',
+      'pageSize',
+      'q',
+      'sort',
+      'stockStatus',
+    ]);
     expect(params.every((param) => param.in === 'query' && !param.required)).toBe(true);
     expect(byName.pageSize?.schema).toMatchObject({ default: 30, minimum: 1, maximum: 100 });
     expect(byName.page?.schema).toMatchObject({ default: 1, minimum: 1 });
@@ -263,6 +273,27 @@ describe('operations', () => {
       expect.arrayContaining(['-price', 'stock', 'updatedAt']),
     );
     expect(byName.category?.schema).toMatchObject({ pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' });
+    expect(byName.stockStatus?.schema.enum).toEqual(['out', 'low', 'in']);
+  });
+
+  it('describes the stats response from the shared stats schema', async () => {
+    const doc = await fetchDoc(newApp());
+    const { schemas } = doc.components;
+
+    expect(Object.keys((schemas.ProductStats as { properties: Schema }).properties)).toEqual([
+      'total',
+      'inStock',
+      'lowStock',
+      'outOfStock',
+      'inventoryValue',
+    ]);
+    expect(schemas.ProductStatsResponse).toMatchObject({
+      properties: { data: { $ref: '#/components/schemas/ProductStats' } },
+      required: ['data'],
+    });
+    expect(operations(doc).get('GET /api/products/stats')?.responses['200']?.content).toMatchObject(
+      { 'application/json': { schema: { $ref: '#/components/schemas/ProductStatsResponse' } } },
+    );
   });
 
   it('paginates the category list the same way', async () => {

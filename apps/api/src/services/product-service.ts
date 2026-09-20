@@ -5,6 +5,7 @@ import {
   type PageMeta,
   type PatchProductInput,
   type Product,
+  type ProductStats,
 } from '@catalog/shared';
 import { ConflictError, NotFoundError, ValidationError } from '../errors.js';
 import type { ProductRecord, ProductRepository } from '../repositories/product-repository.js';
@@ -84,12 +85,18 @@ export function createProductService(
       if (!repository.delete(id)) throw new NotFoundError(`Product ${id} not found`);
     },
 
-    list({ page, pageSize, q, category, sort }: ListQuery): { data: Product[]; meta: PageMeta } {
+    stats: (): ProductStats => repository.stats(),
+
+    list({ page, pageSize, q, category, stockStatus, sort }: ListQuery): {
+      data: Product[];
+      meta: PageMeta;
+    } {
       const { rows, total } = repository.list({
         limit: pageSize,
         offset: (page - 1) * pageSize,
         q,
         category,
+        stockStatus,
         sort: sort ? parseSort(sort) : undefined,
       });
 

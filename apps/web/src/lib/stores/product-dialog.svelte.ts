@@ -2,6 +2,7 @@ import type { CreateProductInput, Product } from '@catalog/shared';
 import { api, ApiError } from '../api.js';
 import { changedFields } from '../product-form.js';
 import { catalog, type CatalogStore } from './catalog.svelte.js';
+import { stats, type StatsStore } from './stats.svelte.js';
 
 export type DialogView =
   | { kind: 'closed' }
@@ -14,6 +15,7 @@ export type DetailStatus = 'loading' | 'ready' | 'error';
 export type DeleteStatus = 'idle' | 'pending' | 'error';
 
 type CatalogActions = Pick<CatalogStore, 'update' | 'load' | 'reloadAfterDelete'>;
+type StatsActions = Pick<StatsStore, 'load'>;
 
 /** What the product modal shows, and the flows that change it. */
 export class ProductDialogStore {
@@ -24,10 +26,12 @@ export class ProductDialogStore {
   deleteError = $state<ApiError | null>(null);
 
   #catalog: CatalogActions;
+  #stats: StatsActions;
   #inFlight: AbortController | undefined;
 
-  constructor(catalog: CatalogActions) {
+  constructor(catalog: CatalogActions, stats: StatsActions) {
     this.#catalog = catalog;
+    this.#stats = stats;
   }
 
   openCreate(): void {
@@ -71,7 +75,7 @@ export class ProductDialogStore {
     let product = current.product;
     if (Object.keys(patch).length > 0) {
       product = await api.patch<Product>(`/products/${product.id}`, patch);
-      await this.#catalog.load();
+      await Promise.all([this.#catalog.load(), this.#stats.load()]);
     }
 
     if (this.view.kind !== 'edit' || this.view.product.id !== product.id) return;
@@ -100,7 +104,7 @@ export class ProductDialogStore {
 
     this.deleteStatus = 'idle';
     if (this.view.kind === 'delete' && this.view.product.id === current.product.id) this.close();
-    await this.#catalog.reloadAfterDelete();
+    await Promise.all([this.#catalog.reloadAfterDelete(), this.#stats.load()]);
   }
 
   /** Shows the row's data at once, then replaces it with the server's copy of the record. */
@@ -137,7 +141,10 @@ export class ProductDialogStore {
    */
   async create(input: CreateProductInput): Promise<void> {
     const product = await api.post<Product>('/products', input);
-    await this.#catalog.update({ q: '', category: '', sort: '-createdAt' });
+    await Promise.all([
+      this.#catalog.update({ q: '', category: '', stockStatus: '', sort: '-createdAt' }),
+      this.#stats.load(),
+    ]);
 
     if (this.view.kind !== 'create') return;
     this.view = { kind: 'detail', product };
@@ -151,4 +158,4 @@ export class ProductDialogStore {
   }
 }
 
-export const productDialog = new ProductDialogStore(catalog);
+export const productDialog = new ProductDialogStore(catalog, stats);

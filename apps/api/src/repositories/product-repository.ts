@@ -1,4 +1,10 @@
-import type { ParsedSort, SortField } from '@catalog/shared';
+import {
+  LOW_STOCK_THRESHOLD,
+  type ParsedSort,
+  type ProductStats,
+  type SortField,
+  type StockStatus,
+} from '@catalog/shared';
 import { and, asc, count, desc, eq, ne, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { categories, products } from '../db/schema.js';
@@ -50,6 +56,8 @@ export interface ListOptions {
   q?: string | undefined;
   /** Category slug. */
   category?: string | undefined;
+  /** Only products in this stock band, as `stockStatus()` defines it. */
+  stockStatus?: StockStatus | undefined;
   /** Defaults to id ascending. Ties always fall back to id, so paging is stable. */
   sort?: ParsedSort | undefined;
 }
@@ -76,7 +84,26 @@ function containsPattern(text: string): string {
   return `%${text.replace(/[\\%_]/g, (char) => LIKE_ESCAPE + char)}%`;
 }
 
-function whereClause({ q, category }: Pick<ListOptions, 'q' | 'category'>): SQL | undefined {
+/**
+ * The stock column tested against the shared threshold, so the SQL and `stockStatus()` cannot
+ * drift apart: out is at 0, low is 1 up to the threshold, in is above it.
+ */
+function stockCondition(status: StockStatus): SQL {
+  switch (status) {
+    case 'out':
+      return sql`${products.stock} <= 0`;
+    case 'low':
+      return sql`${products.stock} > 0 AND ${products.stock} <= ${LOW_STOCK_THRESHOLD}`;
+    case 'in':
+      return sql`${products.stock} > ${LOW_STOCK_THRESHOLD}`;
+  }
+}
+
+function whereClause({
+  q,
+  category,
+  stockStatus,
+}: Pick<ListOptions, 'q' | 'category' | 'stockStatus'>): SQL | undefined {
   const conditions: (SQL | undefined)[] = [];
 
   if (q) {
@@ -89,6 +116,7 @@ function whereClause({ q, category }: Pick<ListOptions, 'q' | 'category'>): SQL 
     );
   }
   if (category) conditions.push(eq(categories.slug, category));
+  if (stockStatus) conditions.push(stockCondition(stockStatus));
 
   return and(...conditions);
 }
@@ -160,8 +188,28 @@ export function createProductRepository(db: Db) {
     },
 
     /** One page of the products matching the filters, plus the total number of matches. */
-    list({ limit, offset, q, category, sort }: ListOptions): ProductPage {
-      const where = whereClause({ q, category });
+    /** Catalog-wide counts by stock status and the value of the stock on hand (`price * stock`). */
+    stats(): ProductStats {
+      const countWhere = (status: StockStatus) =>
+        sql<number>`COALESCE(SUM(${stockCondition(status)}), 0)`;
+
+      const row = db
+        .select({
+          total: count(),
+          inStock: countWhere('in'),
+          lowStock: countWhere('low'),
+          outOfStock: countWhere('out'),
+          inventoryValue: sql<number>`COALESCE(ROUND(SUM(${products.price} * ${products.stock}), 2), 0)`,
+        })
+        .from(products)
+        .get();
+
+      return row ?? { total: 0, inStock: 0, lowStock: 0, outOfStock: 0, inventoryValue: 0 };
+    },
+
+    /** One page of the products matching the filters, plus the total number of matches. */
+    list({ limit, offset, q, category, stockStatus, sort }: ListOptions): ProductPage {
+      const where = whereClause({ q, category, stockStatus });
       const orderBy = sort
         ? [(sort.direction === 'desc' ? desc : asc)(sortColumns[sort.field]), asc(products.id)]
         : [asc(products.id)];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SORT_FIELDS, listQuerySchema, parseSort } from '../src/index.js';
+import { SORT_FIELDS, STOCK_STATUSES, listQuerySchema, parseSort } from '../src/index.js';
 
 describe('listQuerySchema', () => {
   it('applies defaults when no params are given', () => {
@@ -46,6 +46,22 @@ describe('listQuerySchema', () => {
     const result = listQuerySchema.safeParse({ category: 'Home Decor' });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(['category']);
+  });
+
+  describe('stockStatus', () => {
+    it('is optional', () => {
+      expect(listQuerySchema.parse({}).stockStatus).toBeUndefined();
+    });
+
+    it.each(STOCK_STATUSES)('accepts %s', (status) => {
+      expect(listQuerySchema.parse({ stockStatus: status }).stockStatus).toBe(status);
+    });
+
+    it.each(['bogus', 'LOW', 'Low', ''])('rejects %j', (value) => {
+      const result = listQuerySchema.safeParse({ stockStatus: value });
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.path).toEqual(['stockStatus']);
+    });
   });
 
   describe('sort', () => {

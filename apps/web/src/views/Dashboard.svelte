@@ -1,18 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Filters from '../components/Filters.svelte';
+  import MetricTiles from '../components/MetricTiles.svelte';
   import Pagination from '../components/Pagination.svelte';
   import ProductTable from '../components/ProductTable.svelte';
   import { paramsFromSearch, paramsToSearch } from '../lib/query-params.js';
   import { catalog } from '../lib/stores/catalog.svelte.js';
   import { productDialog } from '../lib/stores/product-dialog.svelte.js';
+  import { stats } from '../lib/stores/stats.svelte.js';
   import CategoryManager from './CategoryManager.svelte';
   import ProductDialog from './ProductDialog.svelte';
 
   // A shared link opens straight onto its query.
   catalog.params = paramsFromSearch(location.search);
 
-  const filtered = $derived(catalog.params.q !== '' || catalog.params.category !== '');
+  const filtered = $derived(
+    catalog.params.q !== '' || catalog.params.category !== '' || catalog.params.stockStatus !== '',
+  );
   const range = $derived.by(() => {
     const { meta, products } = catalog;
     if (!meta || products.length === 0) return null;
@@ -22,6 +26,7 @@
 
   onMount(() => {
     void catalog.load();
+    void stats.load();
 
     const onPopState = () => void catalog.applyParams(paramsFromSearch(location.search));
     window.addEventListener('popstate', onPopState);
@@ -54,6 +59,10 @@
     >
       New product
     </button>
+  </div>
+
+  <div class="mt-4">
+    <MetricTiles />
   </div>
 
   <div class="mt-4">
@@ -91,7 +100,7 @@
           <button
             type="button"
             class="mt-3 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
-            onclick={() => catalog.update({ q: '', category: '' })}
+            onclick={() => catalog.update({ q: '', category: '', stockStatus: '' })}
           >
             Clear search
           </button>
