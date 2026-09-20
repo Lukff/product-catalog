@@ -11,7 +11,7 @@ export const productStatsSchema = z.object({
   inStock: count,
   lowStock: count,
   outOfStock: count,
-  /** Sum of `price * stock`, rounded to 2 decimals. */
+  /** Sum of `price * stock`, summed in integer cents so it is exact, then sent as a decimal. */
   inventoryValue: z.number().min(0, 'must be >= 0'),
 });
 

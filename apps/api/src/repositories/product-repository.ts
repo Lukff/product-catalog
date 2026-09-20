@@ -15,7 +15,8 @@ export interface ProductRecord {
   title: string;
   description: string;
   category: string;
-  price: number;
+  /** Integer cents; the service converts to the wire's decimal `price`. */
+  priceCents: number;
   stock: number;
   brand: string;
   sku: string;
@@ -28,7 +29,7 @@ export interface NewProduct {
   title: string;
   description: string;
   categoryId: number;
-  price: number;
+  priceCents: number;
   stock: number;
   brandId: number;
   sku: string;
@@ -41,13 +42,18 @@ export interface ProductChanges {
   title?: string | undefined;
   description?: string | undefined;
   categoryId?: number | undefined;
-  price?: number | undefined;
+  priceCents?: number | undefined;
   stock?: number | undefined;
   brandId?: number | undefined;
   sku?: string | undefined;
   weight?: number | undefined;
   updatedAt: string;
 }
+
+/** `ProductStats` with the inventory value still in integer cents. */
+export type ProductStatsRow = Omit<ProductStats, 'inventoryValue'> & {
+  inventoryValueCents: number;
+};
 
 export interface ListOptions {
   limit: number;
@@ -72,7 +78,7 @@ export interface ProductPage {
 const sortColumns: Record<SortField, AnyColumn | SQL> = {
   // Alphabetical order should not depend on letter case.
   title: sql`${products.title} COLLATE NOCASE`,
-  price: products.price,
+  price: products.priceCents,
   stock: products.stock,
   weight: products.weight,
   createdAt: products.createdAt,
@@ -130,7 +136,7 @@ const productColumns = {
   title: products.title,
   description: products.description,
   category: categories.slug,
-  price: products.price,
+  priceCents: products.priceCents,
   stock: products.stock,
   brand: brands.name,
   sku: products.sku,
@@ -197,9 +203,8 @@ export function createProductRepository(db: Db) {
       return db.insert(products).values(values).returning({ id: products.id }).get().id;
     },
 
-    /** One page of the products matching the filters, plus the total number of matches. */
-    /** Catalog-wide counts by stock status and the value of the stock on hand (`price * stock`). */
-    stats(): ProductStats {
+    /** Catalog-wide counts by stock status and the value of the stock on hand, in integer cents. */
+    stats(): ProductStatsRow {
       const countWhere = (status: StockStatus) =>
         sql<number>`COALESCE(SUM(${stockCondition(status)}), 0)`;
 
@@ -209,12 +214,12 @@ export function createProductRepository(db: Db) {
           inStock: countWhere('in'),
           lowStock: countWhere('low'),
           outOfStock: countWhere('out'),
-          inventoryValue: sql<number>`COALESCE(ROUND(SUM(${products.price} * ${products.stock}), 2), 0)`,
+          inventoryValueCents: sql<number>`COALESCE(SUM(${products.priceCents} * ${products.stock}), 0)`,
         })
         .from(products)
         .get();
 
-      return row ?? { total: 0, inStock: 0, lowStock: 0, outOfStock: 0, inventoryValue: 0 };
+      return row ?? { total: 0, inStock: 0, lowStock: 0, outOfStock: 0, inventoryValueCents: 0 };
     },
 
     /** One page of the products matching the filters, plus the total number of matches. */

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { stockStatus, type Product, type StockStatus } from '@catalog/shared';
+  import { formatMoney, stockStatus, type Product, type StockStatus } from '@catalog/shared';
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import Trash2Icon from '@lucide/svelte/icons/trash-2';
   import type { ApiError } from '../lib/api.js';
@@ -25,7 +25,6 @@
     in: { label: 'In stock', classes: 'bg-emerald-100 text-emerald-800' },
   };
   const badge = $derived(badges[stockStatus(product.stock)]);
-  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const when = (iso: string) => new Date(iso).toLocaleString();
 </script>
 
@@ -59,7 +58,7 @@
   </div>
   <div>
     <dt class="text-xs font-medium uppercase text-slate-500">Price</dt>
-    <dd class="mt-0.5 tabular-nums">{currency.format(product.price)}</dd>
+    <dd class="mt-0.5 tabular-nums">{formatMoney(product.price)}</dd>
   </div>
   <div>
     <dt class="text-xs font-medium uppercase text-slate-500">Stock</dt>

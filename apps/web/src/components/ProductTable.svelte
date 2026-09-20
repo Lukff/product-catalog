@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { stockStatus, type Product, type StockStatus } from '@catalog/shared';
+  import { formatMoney, stockStatus, type Product, type StockStatus } from '@catalog/shared';
 
   let { products, onselect }: { products: Product[]; onselect: (product: Product) => void } =
     $props();
@@ -9,8 +9,6 @@
     low: { label: 'Low stock', classes: 'bg-amber-100 text-amber-800' },
     in: { label: 'In stock', classes: 'bg-emerald-100 text-emerald-800' },
   };
-
-  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
@@ -39,7 +37,7 @@
           <td class="px-4 py-3 text-slate-700">{product.brand}</td>
           <td class="px-4 py-3 text-slate-700">{product.category}</td>
           <td class="px-4 py-3 text-right text-slate-900 tabular-nums">
-            {currency.format(product.price)}
+            {formatMoney(product.price)}
           </td>
           <td class="px-4 py-3 text-right text-slate-900 tabular-nums">{product.stock}</td>
           <td class="px-4 py-3">

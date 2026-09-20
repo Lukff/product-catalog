@@ -1,7 +1,11 @@
 import {
   LOW_STOCK_THRESHOLD,
+  fromCents,
+  isMoney,
   productStatsSchema,
   stockStatus,
+  sumCents,
+  toCents,
   type ErrorResponse,
   type ItemResponse,
   type ListResponse,
@@ -16,6 +20,7 @@ import { createTestDb, type TestDb } from './helpers.js';
 
 const seed = loadSeedData();
 
+/** Expected stats with the value summed in integer cents, the way the API does it. */
 function expectedStats(rows: { price: number; stock: number }[]): ProductStats {
   const count = (status: StockStatus) =>
     rows.filter((row) => stockStatus(row.stock) === status).length;
@@ -24,7 +29,7 @@ function expectedStats(rows: { price: number; stock: number }[]): ProductStats {
     inStock: count('in'),
     lowStock: count('low'),
     outOfStock: count('out'),
-    inventoryValue: rows.reduce((sum, row) => sum + row.price * row.stock, 0),
+    inventoryValue: fromCents(sumCents(rows.map((row) => toCents(row.price) * row.stock))),
   };
 }
 
@@ -56,7 +61,7 @@ describe('GET /api/products/stats', () => {
       lowStock: expected.lowStock,
       outOfStock: expected.outOfStock,
     });
-    expect(body.data.inventoryValue).toBeCloseTo(expected.inventoryValue, 2);
+    expect(body.data.inventoryValue).toBe(expected.inventoryValue);
   });
 
   it('has counts that add up to the total', async () => {
@@ -65,10 +70,10 @@ describe('GET /api/products/stats', () => {
     expect(body.data.inStock + body.data.lowStock + body.data.outOfStock).toBe(body.data.total);
   });
 
-  it('rounds the inventory value to 2 decimals', async () => {
+  it('reports an inventory value with at most 2 decimals', async () => {
     const { body } = await stats();
 
-    expect(body.data.inventoryValue).toBe(Math.round(body.data.inventoryValue * 100) / 100);
+    expect(isMoney(body.data.inventoryValue)).toBe(true);
   });
 
   it('agrees with stockStatus() at the boundaries 0, 1, the threshold and just above it', async () => {
@@ -132,9 +137,8 @@ describe('GET /api/products/stats', () => {
     const afterPatch = (await stats()).body.data;
     expect(afterPatch.outOfStock).toBe(before.outOfStock);
     expect(afterPatch.lowStock).toBe(before.lowStock + 1);
-    expect(afterPatch.inventoryValue).toBeCloseTo(
-      before.inventoryValue + 10 * LOW_STOCK_THRESHOLD,
-      2,
+    expect(afterPatch.inventoryValue).toBe(
+      fromCents(toCents(before.inventoryValue) + toCents(10) * LOW_STOCK_THRESHOLD),
     );
 
     await app.request(`/api/products/${product.id}`, { method: 'DELETE' });
@@ -165,6 +169,59 @@ describe('GET /api/products/stats on an empty catalog', () => {
       outOfStock: 0,
       inventoryValue: 0,
     });
+  });
+});
+
+describe('inventory value with prices whose float sum drifts', () => {
+  let testDb: TestDb;
+
+  beforeAll(() => {
+    testDb = createTestDb();
+  });
+  afterAll(() => testDb.cleanup());
+
+  it('is exact, and prices round-trip through create and read', async () => {
+    const app = createApp({ db: testDb.db });
+    const send = (url: string, body: unknown) =>
+      app.request(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    await send('/api/categories', { slug: 'money' });
+    await send('/api/brands', { name: 'Ledger' });
+
+    // In floating point 0.1 + 0.2 is 0.30000000000000004 and 0.29 * 3 is 0.8699999999999999.
+    const cases = [
+      { sku: 'M-1', price: 0.1, stock: 1 },
+      { sku: 'M-2', price: 0.2, stock: 1 },
+      { sku: 'M-3', price: 0.29, stock: 3 },
+      { sku: 'M-4', price: 1234567.89, stock: 7 },
+    ];
+    for (const { sku, price, stock } of cases) {
+      const created = await send('/api/products', {
+        title: sku,
+        description: 'Money probe.',
+        category: 'money',
+        price,
+        stock,
+        brand: 'Ledger',
+        sku,
+        weight: 1,
+      });
+      const { data } = (await created.json()) as ItemResponse<Product>;
+      expect(created.status).toBe(201);
+      expect(data.price).toBe(price);
+
+      const read = await app.request(`/api/products/${data.id}`);
+      expect(((await read.json()) as ItemResponse<Product>).data.price).toBe(price);
+    }
+
+    const res = await app.request('/api/products/stats');
+    const body = (await res.json()) as ItemResponse<ProductStats>;
+
+    // 10 + 20 + 87 + 864197523 = 864197640 cents, exactly.
+    expect(body.data.inventoryValue).toBe(8641976.4);
   });
 });
 
