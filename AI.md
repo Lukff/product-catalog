@@ -305,3 +305,13 @@ typecheck caught `toSorted` missing from the ES2022 lib, so the model fixed both
 committing. The category select is disabled until B-11, as the backlog says.
 
 **Reflection:** It worked faster without the additional PR.
+
+## 2026-09-20 — Product detail and create product, planned by Claude and built by Gemini (B-07)
+
+**Context:** B-07 (the merger of the former detail and create items, `docs/backlog.md`) was the first write path: `GET /api/products/:id`, `POST /api/products`, and a dashboard modal that shows a product's full record and hosts the create form. It depended on B-06 and B-08, both done.
+
+**Tooling & prompts:** Claude (Sonnet 5) wrote the plan with the `superpowers:writing-plans` skill, then reviewed the result and ran the browser check with Playwright. Gemini 3.8 Flash implemented the plan. The plan is `docs/superpowers/plans/2026-09-20-b-07-product-detail-and-create.md`: seven tasks, test-first, each with exact files, interfaces and code, plus a list of global constraints for the implementer to follow.
+
+**What happened:** The work was split to save tokens: Claude did the planning and the verification, Gemini did the implementation. The plan went to Gemini on `feat/b-07-product-detail-and-create`, which produced seven commits. Claude's review found typecheck, lint and 252 tests green and the code matching the plan, plus three stray path comments copied from the plan's code blocks. The browser check passed all eight steps. The one wart was "Bad Gateway" shown when the API is down, which comes from the Vite proxy answering 502 (an earlier B-05 behaviour), not from B-07.
+
+**Reflection:** It worked pretty well here.
