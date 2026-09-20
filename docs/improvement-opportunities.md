@@ -18,3 +18,15 @@ these is picked up, it moves to `backlog.md` as a proper item.
   form, the empty and error states, the responsive layout on narrow screens, and a
   favicon (the browser requests one and gets a `404` on every load). The metric strip
   is still missing and depends on the custom-feature decision (D-2 in `backlog.md`).
+- **Batch editing.** Products can only be edited or deleted one at a time through the
+  modal. Selecting several rows in the table and applying one change to all of them
+  (set the category, adjust the price, toggle the status, or delete) would save
+  repetitive work on a larger catalog. It needs a selection column in the table, a
+  bulk-action bar, and a batch endpoint in the API that applies the change in a single
+  transaction, so a partial failure leaves nothing half-updated.
+- **Support for images.** Products have no picture, so the table and the detail view
+  are text only. Adding one image per product (an upload or a URL) would make the
+  catalog much easier to scan. It touches the data model (an image reference on the
+  product), the shared Zod contract, the API (upload handling, file size and type
+  validation, and where the files are stored) and the SPA (a thumbnail in the table,
+  a preview in the form and detail view, and a placeholder when there is none).
