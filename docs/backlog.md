@@ -214,7 +214,7 @@ Web:
 
 ### B-10 — Edit and delete product
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-07
 
 API:
@@ -229,12 +229,11 @@ API:
 
 Web:
 
-- The detail modal's Edit and Delete buttons already exist, disabled (B-07); enable and wire them.
-- Edit reuses `ProductForm` pre-filled from the record — no second form
+- Edit reuses `ProductForm` pre-filled from the record - no second form
   component.
 - Only changed fields are sent.
 - The detail modal and the list both reflect the update without a full reload.
-- Delete requires a confirmation step — destructive actions are never one click.
+- Delete requires a confirmation step - destructive actions are never one click.
 - On delete success the modal closes and the list refreshes, staying on a valid
   page if the last row of the page was removed.
 

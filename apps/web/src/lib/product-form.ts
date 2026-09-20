@@ -3,6 +3,8 @@ import {
   zodIssuesToDetails,
   type CreateProductInput,
   type ErrorDetail,
+  type PatchProductInput,
+  type Product,
 } from '@catalog/shared';
 
 export const FORM_FIELDS = [
@@ -82,4 +84,28 @@ export function detailsToFieldErrors(details: ErrorDetail[]): {
     else if (fields[detail.path] === undefined) fields[detail.path] = detail.message;
   }
   return { fields, unmatched };
+}
+
+/** The form's initial values for editing: every field as the string a user would have typed. */
+export function valuesFromProduct(product: Product): ProductFormValues {
+  return {
+    title: product.title,
+    description: product.description,
+    category: product.category,
+    brand: product.brand,
+    sku: product.sku,
+    price: String(product.price),
+    stock: String(product.stock),
+    weight: String(product.weight),
+  };
+}
+
+/** The fields of `input` that differ from the stored product; `{}` when nothing changed. */
+export function changedFields(original: Product, input: CreateProductInput): PatchProductInput {
+  const patch: Record<string, unknown> = {};
+  for (const field of FORM_FIELDS) {
+    if (original[field] !== input[field]) patch[field] = input[field];
+  }
+  // Every key is a field of the patch schema and every value came from the validated input.
+  return patch as PatchProductInput;
 }

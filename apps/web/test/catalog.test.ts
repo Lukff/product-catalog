@@ -1,5 +1,6 @@
 import type { ListResponse, Product } from '@catalog/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_PARAMS } from '../src/lib/query-params.js';
 import { CatalogStore } from '../src/lib/stores/catalog.svelte.js';
 
 function product(id: number): Product {
@@ -229,5 +230,44 @@ describe('CatalogStore', () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/products?page=2&pageSize=10&q=a');
     expect(store.params).toEqual({ page: 2, pageSize: 10, q: 'a', category: '', sort: '' });
+  });
+});
+
+describe('CatalogStore.reloadAfterDelete', () => {
+  // `page(...)` is the response builder defined at the top of this file.
+  function storeOn(pageNumber: number, products: Product[]) {
+    const fetchMock = vi.fn(async (_url: string) => json(page(products)));
+    vi.stubGlobal('fetch', fetchMock);
+    const store = new CatalogStore();
+    store.params = { ...DEFAULT_PARAMS, page: pageNumber };
+    store.products = products;
+    return { store, fetchMock };
+  }
+
+  it('steps back a page when the last row of a page after the first was deleted', async () => {
+    const { store, fetchMock } = storeOn(2, [product(31)]);
+
+    await store.reloadAfterDelete();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/products?page=1&pageSize=30');
+    expect(store.params.page).toBe(1);
+  });
+
+  it('reloads the same page while it still has rows', async () => {
+    const { store, fetchMock } = storeOn(2, [product(31), product(32)]);
+
+    await store.reloadAfterDelete();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/products?page=2&pageSize=30');
+    expect(store.params.page).toBe(2);
+  });
+
+  it('stays on page 1 when its only row was deleted', async () => {
+    const { store, fetchMock } = storeOn(1, [product(1)]);
+
+    await store.reloadAfterDelete();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/products?page=1&pageSize=30');
+    expect(store.params.page).toBe(1);
   });
 });

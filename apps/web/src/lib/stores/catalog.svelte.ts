@@ -26,6 +26,15 @@ export class CatalogStore {
     return this.load();
   }
 
+  /**
+   * Refreshes the list after a product was deleted. If that was the only row on a page after the
+   * first, that page no longer exists, so step back one instead of showing an empty page.
+   */
+  reloadAfterDelete(): Promise<void> {
+    const wasLastRow = this.products.length === 1 && this.params.page > 1;
+    return wasLastRow ? this.update({ page: this.params.page - 1 }) : this.load();
+  }
+
   /** Fetches the list for the current params. A newer call supersedes an older one. */
   async load(): Promise<void> {
     this.#inFlight?.abort();

@@ -7,7 +7,15 @@
     product,
     status,
     error,
-  }: { product: Product; status: DetailStatus; error: ApiError | null } = $props();
+    onedit,
+    ondelete,
+  }: {
+    product: Product;
+    status: DetailStatus;
+    error: ApiError | null;
+    onedit: () => void;
+    ondelete: () => void;
+  } = $props();
 
   const badges: Record<StockStatus, { label: string; classes: string }> = {
     out: { label: 'Out of stock', classes: 'bg-red-100 text-red-800' },
@@ -77,17 +85,17 @@
 <div class="mt-6 flex justify-end gap-3">
   <button
     type="button"
-    disabled
-    title="Coming soon"
     class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
+    disabled={status === 'loading'}
+    onclick={onedit}
   >
     Edit
   </button>
   <button
     type="button"
-    disabled
-    title="Coming soon"
     class="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm text-red-700 disabled:opacity-50"
+    disabled={status === 'loading'}
+    onclick={ondelete}
   >
     Delete
   </button>

@@ -1,4 +1,9 @@
-import { createProductSchema, listQuerySchema, productIdParamSchema } from '@catalog/shared';
+import {
+  createProductSchema,
+  listQuerySchema,
+  patchProductSchema,
+  productIdParamSchema,
+} from '@catalog/shared';
 import { Hono } from 'hono';
 import { readJsonBody } from './json-body.js';
 import type { ProductService } from '../services/product-service.js';
@@ -17,6 +22,18 @@ export function productRoutes(service: ProductService) {
   routes.post('/', async (c) => {
     const input = createProductSchema.parse(await readJsonBody(c));
     return c.json({ data: service.create(input) }, 201);
+  });
+
+  routes.patch('/:id', async (c) => {
+    const { id } = productIdParamSchema.parse(c.req.param());
+    const patch = patchProductSchema.parse(await readJsonBody(c));
+    return c.json({ data: service.update(id, patch) });
+  });
+
+  routes.delete('/:id', (c) => {
+    const { id } = productIdParamSchema.parse(c.req.param());
+    service.delete(id);
+    return c.body(null, 204);
   });
 
   return routes;
