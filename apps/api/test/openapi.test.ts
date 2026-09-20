@@ -53,6 +53,15 @@ const EXPECTED_STATUSES: Record<string, string[]> = {
   'POST /api/categories': ['201', '400', '409', '500'],
 };
 
+/** Operations whose route exists in the real app. Add each one here as its backlog item lands. */
+const IMPLEMENTED_OPERATIONS = new Set([
+  'GET /api/products',
+  'GET /api/products/{id}',
+  'POST /api/products',
+  'PATCH /api/products/{id}',
+  'DELETE /api/products/{id}',
+]);
+
 let testDb: TestDb;
 
 beforeAll(() => {
@@ -405,27 +414,29 @@ describe('response examples', () => {
 });
 
 describe('implementation status', () => {
-  it('marks every operation as not implemented while no route exists', async () => {
+  it('marks an operation as not implemented until its route exists', async () => {
     const doc = await fetchDoc(newApp());
 
     for (const [key, operation] of operations(doc)) {
-      expect(operation['x-implemented'], key).toBe(false);
-      expect(operation.description, key).toMatch(/^\*\*Not implemented yet\.\*\*/);
+      const implemented = IMPLEMENTED_OPERATIONS.has(key);
+      expect(operation['x-implemented'], key).toBe(implemented);
+      if (implemented) {
+        expect(operation.description, key).not.toMatch(/Not implemented yet/);
+      } else {
+        expect(operation.description, key).toMatch(/^\*\*Not implemented yet\.\*\*/);
+      }
     }
   });
 
   it('flips an operation on as soon as its route is registered, and only that one', async () => {
     const app = newApp();
-    app.get('/api/products', (c) => c.json({ data: [] }));
-    app.get('/api/products/:id', (c) => c.json({ data: null }));
+    app.get('/api/categories', (c) => c.json({ data: [] }));
 
     const ops = operations(await fetchDoc(app));
 
-    expect(ops.get('GET /api/products')?.['x-implemented']).toBe(true);
-    expect(ops.get('GET /api/products/{id}')?.['x-implemented']).toBe(true);
-    expect(ops.get('GET /api/products')?.description).not.toMatch(/Not implemented yet/);
-    expect(ops.get('POST /api/products')?.['x-implemented']).toBe(false);
-    expect(ops.get('DELETE /api/products/{id}')?.['x-implemented']).toBe(false);
+    expect(ops.get('GET /api/categories')?.['x-implemented']).toBe(true);
+    expect(ops.get('GET /api/categories')?.description).not.toMatch(/Not implemented yet/);
+    expect(ops.get('POST /api/categories')?.['x-implemented']).toBe(false);
   });
 });
 

@@ -47,7 +47,7 @@ product-catalog/
         errors.ts         AppError, ValidationError, NotFoundError, ConflictError
         openapi/          the OpenAPI document (built from the shared schemas) and the /api/docs + /api/openapi.json routes
         middleware/       error-handler.ts: the one place error responses are written
-        routes/           HTTP layer: parse, validate, serialize
+        routes/           HTTP layer: parse, validate, serialize; json-body.ts
         services/         business rules, timestamps, error mapping
         repositories/     Drizzle queries
         db/               schema.ts, client.ts, migrate.ts, migrations/, seed.ts, seed.json
@@ -59,9 +59,10 @@ product-catalog/
       src/
         main.ts, App.svelte, app.css   mount point, root component, Tailwind import
         lib/api.ts        typed fetch wrapper (unwraps `data`; failures reject with a typed `ApiError`)
-        lib/stores/       catalog query state (runes)
-        components/       ProductTable, Filters, ProductForm, Pagination, MetricTiles
-        views/            Dashboard, ProductDetail (modal)
+        lib/product-form.ts form values, validation against shared schema, error mapping
+        lib/stores/       catalog query state (runes); product-dialog.svelte.ts (modal view & flows)
+        components/       ProductTable, Filters, ProductForm, Pagination, Modal, MetricTiles
+        views/            Dashboard, ProductDetail, ProductDeleteConfirm, ProductDialog (modal router)
       test/               unit tests (Vitest, run from the root)
       vite.config.ts      dev proxy /api -> http://localhost:3000; Tailwind and Svelte plugins
   packages/
@@ -107,9 +108,13 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 | GET | `/api/categories` | Paginated list, same envelope. |
 | POST | `/api/categories` | Extended endpoint; creates a category from its slug. `409` on a duplicate slug. |
 
-- **Search** is `GET /api/products?q=flux`, not a separate `/search` route, so search composes with the category filter, sort, and pagination instead of duplicating that logic. Matching is a case-insensitive substring (`LIKE`) over `title` and `description`.
-- **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`.
+- **Search** is `GET /api/products?q=flux`, not a separate `/search` route, so search composes with the category filter, sort, and pagination instead of duplicating that logic. Matching is a case-insensitive substring (`LIKE`) over `title` and `description`; `%` and `_` in the search text match themselves (escaped), not as wildcards. Blank `q` is ignored.
+- **Sort** syntax: `?sort=-price` (leading `-` means descending), `?sort=stock`. Allowed fields are whitelisted: `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else returns `400 VALIDATION_ERROR`. `title` sorts case-insensitively, and ties always fall back to `id` so pages never overlap or skip a row. An unknown `category` slug is a filter with no matches (an empty `200`), not an error.
 - **PATCH only** (the brief permits PUT *or* PATCH). One write path means one validation schema and no ambiguity about whether omitted fields are cleared.
+- **Single-product path param (`:id`):** validated with `productIdParamSchema` from `packages/shared`. Non-numeric or fractional strings return `400 VALIDATION_ERROR` with message `'must be an integer'`; values below 1 return `'must be >= 1'`.
+- **POST `/api/products` order of checks:** request body JSON parsing (`400` with empty path and `'must be valid JSON'` if malformed) -> shared schema validation (`400` with field-level `details`) -> category existence check (`400` naming `category`) -> sku uniqueness check (`409`). Both timestamps are set to the same server clock ISO timestamp; `id` and client-sent timestamps are stripped.
+- **PATCH `/api/products/:id` order of checks:** path param `id` validation (`400`) -> request body JSON parsing (`400` with empty path and `'must be valid JSON'`) -> shared schema validation (`400` with field-level `details`, or `'must include at least one field'`) -> product exists (`404`) -> category existence check (`400` naming `category`) -> sku owned by another product (`409` with `details` naming `sku`). A product re-sending its own sku is not a conflict. Only the fields present in the patch are written and `updatedAt` is refreshed from the server clock; `id` and client-sent timestamps are stripped.
+- **DELETE `/api/products/:id`:** path param `id` validation (`400`) -> product deletion. Answers `204` with an empty body, and `404 NOT_FOUND` for an absent or already deleted id, with no cascade (categories are untouched).
 
 ### 3.3 Errors
 
@@ -120,12 +125,12 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 
 | Code | HTTP | When |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | Zod rejection of body or query params. `details` lists every failing field. |
+| `VALIDATION_ERROR` | 400 | Zod rejection of body or query params, or malformed JSON body. `details` lists every failing field. |
 | `NOT_FOUND` | 404 | Unknown id or unknown route. |
 | `CONFLICT` | 409 | Duplicate `sku`. |
 | `INTERNAL_ERROR` | 500 | Unhandled; generic message, real error logged server-side. |
 
-A single Hono error-handling middleware (`middleware/error-handler.ts`) maps thrown domain errors to this shape, so no route hand-writes an error response. It handles three cases: an `AppError` (`ValidationError`, `NotFoundError`, `ConflictError`) becomes its own code and status and may carry `details`; a `ZodError` becomes `400 VALIDATION_ERROR` with `details` built by `zodIssuesToDetails()` from `packages/shared` (the same helper the web form uses, so paths and messages agree; an issue on the whole payload has the empty path); anything else becomes a generic `500` whose real error is logged and never sent. `app.notFound` returns the `404 NOT_FOUND` envelope for unknown routes.
+A single Hono error-handling middleware (`middleware/error-handler.ts`) maps thrown domain errors to this shape, so no route hand-writes an error response. It handles three cases: an `AppError` (`ValidationError`, `NotFoundError`, `ConflictError`) becomes its own code and status and may carry `details`; a `ZodError` becomes `400 VALIDATION_ERROR` with `details` built by `zodIssuesToDetails()` from `packages/shared` (the same helper the web form uses, so paths and messages agree; an issue on the whole payload has the empty path); anything else becomes a generic `500` whose real error is logged and never sent. `app.notFound` returns the `404 NOT_FOUND` envelope for unknown routes. A `409 CONFLICT` for duplicate sku carries `details: [{ path: 'sku', message: 'is already in use' }]` so a client can attach it directly to the field. A body that is not JSON is `400 VALIDATION_ERROR` with `details: [{ path: '', message: 'must be valid JSON' }]`.
 
 ### 3.4 API documentation
 
@@ -168,7 +173,7 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 - `id` and `meta` are stripped from create and patch bodies rather than rejected.
 - A `category` slug that matches no row in `categories` is rejected with `400 VALIDATION_ERROR` naming `category`; a category is never created implicitly by a product write.
 
-**Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by a serializer at the route boundary. The brief's JSON shape is preserved without a nested-object column. Likewise `category_id` is resolved to the category's slug on the way out, and the slug back to an id on the way in, so the wire contract never exposes the surrogate key.
+**Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by the product service (`toProduct` in `services/product-service.ts`; routes may not import row types, so the mapping cannot live at the route boundary). The brief's JSON shape is preserved without a nested-object column. Likewise `category_id` is resolved to the category's slug on the way out, and the slug back to an id on the way in, so the wire contract never exposes the surrogate key.
 
 **Categories:** `categories(id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE)`. A slug is the only attribute for now; a display name can be added by a later migration if the UI needs one. SQLite ignores foreign keys unless `PRAGMA foreign_keys = ON` is set on each connection, so `createDb()` does that. Deleting a category that still has products is refused (SQLite reports it as `SQLITE_CONSTRAINT_TRIGGER`; inserting a product for a missing category is `SQLITE_CONSTRAINT_FOREIGNKEY`).
 
@@ -186,11 +191,11 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 
 - **Metric strip** - headline counts over the catalog (exact contents depend on open decision #2).
 - **Toolbar** - debounced search box, category select, sort select, page-size select.
-- **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal.
-- **Detail modal** - full record, with Edit and Delete actions.
-- **Product form** - one component for create and edit, validated client-side with the same Zod schema the API uses, so messages match.
-- **Delete** - confirmation step; destructive actions are never one click.
-- **State** - Svelte 5 runes (`$state`, `$derived`) in a small `catalog` store holding query params and results. Query params are mirrored into the URL so a filtered view is shareable and the back button behaves.
+- **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal. Stock status is derived, not sent by the API: `stockStatus()` in `packages/shared` returns `out` at 0, `low` from 1 to `LOW_STOCK_THRESHOLD` (5, matching the seed), otherwise `in`.
+- **Detail modal and dialog store** - the modal is a native `<dialog>` (`showModal()`), which supplies Escape-to-close, the focus trap, and focus restoration to the opener automatically. Opening a row shows the list's data immediately and refreshes it in the background from `GET /api/products/:id` (`ProductDialogStore` in `lib/stores/product-dialog.svelte.ts`). Edit and Delete work inside the same modal (`detail` -> `edit` / `delete` -> back to `detail`), waiting for the detail refresh so edits start from the server's copy.
+- **Product form** - one component for create and edit (`ProductForm.svelte`), validated client-side with the same Zod schema the API uses (`lib/product-form.ts`), so messages match. When editing, the form is pre-filled, computes and sends only changed fields, and sends nothing if nothing changed; on save success the list reloads and the modal shows the updated product. After a successful create, the list resets to newest-first (`sort: '-createdAt'`) with filters cleared and the modal shows the new product. The category field is a free-text slug input until B-11 provides the category dropdown.
+- **Delete** - confirmation step inside the modal (`ProductDeleteConfirm.svelte`) with Cancel focused; destructive actions are never one click. On delete success the modal closes and the list reloads, stepping back one page if the deleted row was the last on a page after the first (`reloadAfterDelete()`).
+- **State** - Svelte 5 runes (`$state`, `$derived`) in a small `catalog` store holding query params and results. Query params are mirrored into the URL (`lib/query-params.ts`) so a filtered view is shareable and the back button behaves: only params that differ from the defaults are written, each change adds a history entry, `popstate` re-applies the URL, and an invalid link falls back to the default list. Any filter change goes back to page 1. The search box is debounced (300 ms); while a new page loads the previous rows stay on screen, dimmed.
 - **Loading, error and empty states** are explicit for the list and every mutation; API error `details` map back onto the offending form fields.
 
 ## 6. Testing and CI
@@ -206,6 +211,8 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 - `DELETE` returns 204, and a second delete returns 404
 
 **Unit tests:** query-param parsing (page/pageSize/sort coercion and bounds) and the shared Zod schemas.
+
+**Test projects:** the root `vitest.config.ts` declares one Vitest project per workspace package. `apps/web` has its own `vitest.config.ts` with the Svelte plugin, so runes in `*.svelte.ts` modules (the catalog store) compile under test.
 
 **CI:** `.github/workflows/ci.yml` on push and pull request - `pnpm install --frozen-lockfile` -> `tsc --noEmit` -> lint -> `vitest run` -> `pnpm audit`.
 

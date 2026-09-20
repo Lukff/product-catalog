@@ -154,7 +154,7 @@ const DEFAULT_ERROR_EXAMPLES: Record<ErrorStatus, ErrorExample> = {
   '409': {
     code: 'CONFLICT',
     message: 'sku already exists',
-    details: [{ path: 'sku', message: 'already exists' }],
+    details: [{ path: 'sku', message: 'is already in use' }],
   },
   '500': { code: 'INTERNAL_ERROR', message: 'Internal server error' },
 };

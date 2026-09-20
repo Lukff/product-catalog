@@ -40,6 +40,14 @@ export const patchProductSchema = createProductSchema
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, 'must include at least one field');
 
+/** `:id` path parameter of the single-product routes. Arrives as a string and is coerced. */
+export const productIdParamSchema = z.object({
+  id: z.coerce
+    .number({ error: 'must be an integer' })
+    .int('must be an integer')
+    .min(1, 'must be >= 1'),
+});
+
 /** A product as returned by the API. `meta` is re-nested from flat storage columns. */
 export const productSchema = createProductSchema.extend({
   id: z.number().int().positive(),

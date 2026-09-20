@@ -235,3 +235,83 @@ corrected that in its summary. Committed as `1330db7` on
 
 **Reflection:** I think it worked for the scaffolding steps but we can work in bigger
 blocks now.
+
+## 2026-09-20 — List products, API and web together (B-06)
+
+**Context:** B-01 to B-05 and the Swagger docs were merged, so the API had a skeleton, seed
+data and an OpenAPI document but no routes, and the web app had a scaffold and a typed
+fetch client but no screens. B-06, the first vertical slice after the backlog
+consolidation, depends only on those, so it was next.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "checkout main and let's work
+on the next task". The model used the superpowers `brainstorming` skill (classifying it as
+architectural, with two multiple-choice questions), then `writing-plans`, and I approved each
+with "go ahead" and "go with approach 1". Execution used `subagent-driven-development`: a
+fresh subagent per task, with a separate reviewer after each and an Opus review of the whole
+branch at the end.
+
+**What happened:** This was the first task advancing with the back and front together. The
+model picked B-06 from the backlog, and the two questions I answered were how much of the
+list query to build now (pagination only, leaving search, sort and category to B-08) and
+where the stock-status threshold lives (a shared constant of 5, so API and web agree). I
+approved skipping a separate spec file and folding the design into
+`docs/technical-decisions.md`. The plan had six tasks: the shared stock helper, `GET
+/api/products`, Vitest projects, the catalog store, the table and dashboard, then a check in
+the running app and the docs. The reviews caught a line in the plan's own code that failed
+Prettier, and the implementer had to add a lint parser rule for `*.svelte.ts` files. The
+final review found an untracked `.vitest/` directory that broke `pnpm lint`, now ignored.
+The auto-mode classifier denied one reviewer dispatch as "data exfiltration"; it went
+through once narrowed to the docs-only diff.
+
+## 2026-09-20 — Dropping the per-item PRs and lightening the process
+
+**Context:** B-06 had just been merged as PR #8, after being run through a branch, a
+brainstorming step, a written plan, subagents and a PR. The rest of the backlog (B-07 to
+B-12) was still ahead, and this step changes how those items are delivered. It serves no
+single backlog item.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "project decision for the next
+items: stop opening PRs for each. This decision is for timing purposes". The model asked how
+each item should then reach `main` (three options) and I answered "first option".
+
+**What happened:** Each item still gets its own branch. When it is done and its checks pass,
+the branch is merged into `main` locally with `--no-ff`, keeping the history grouped per
+item, and `main` is pushed. No PR is opened per item. The model recorded the rule in its
+memory for this repo.
+
+**Reflection:** All the scaffolding for the workflow and the PRs were a good approach for
+structuring, but it ended up costing too much time, so we are going more directly to
+implementation now for practical reasons.
+
+## 2026-09-20 — Search, sort, filter and pagination (B-08)
+
+**Context:** B-06 was merged, so the list endpoint and dashboard existed with pagination
+only. B-08 depends only on B-06 and adds the rest of the list query, `q`, `category` and
+`sort` on the API and the controls on the web side. It was the first item run under the
+lighter workflow from the previous entry.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "let's do B-08 next". There was
+no brainstorming step, plan document or subagents: the model made a branch, wrote the
+tests first, then the code, and checked the result in a real browser with Playwright.
+
+**What happened:** The model did the API first: `q` over title and description with `%` and
+`_` matched literally, the category filter, and whitelisted sorts with ties broken by id so
+pages stay stable, with tests that compute the expected results from the seed instead of
+hard-coding them. The web side added a debounced search box, sort and page-size selects, a
+numbered pager and URL mirroring with Back support. In the browser check the URL params,
+Back button, last-page pager and no-results state all worked. Along the way one scripted
+edit misplaced a constant in the repository and mangled a backslash escape, and the
+typecheck caught `toSorted` missing from the ES2022 lib, so the model fixed both before
+committing. The category select is disabled until B-11, as the backlog says.
+
+**Reflection:** It worked faster without the additional PR.
+
+## 2026-09-20 — Product detail and create product, planned by Claude and built by Gemini (B-07)
+
+**Context:** B-07 (the merger of the former detail and create items, `docs/backlog.md`) was the first write path: `GET /api/products/:id`, `POST /api/products`, and a dashboard modal that shows a product's full record and hosts the create form. It depended on B-06 and B-08, both done.
+
+**Tooling & prompts:** Claude (Sonnet 5) wrote the plan with the `superpowers:writing-plans` skill, then reviewed the result and ran the browser check with Playwright. Gemini 3.8 Flash implemented the plan. The plan is `docs/superpowers/plans/2026-09-20-b-07-product-detail-and-create.md`: seven tasks, test-first, each with exact files, interfaces and code, plus a list of global constraints for the implementer to follow.
+
+**What happened:** The work was split to save tokens: Claude did the planning and the verification, Gemini did the implementation. The plan went to Gemini on `feat/b-07-product-detail-and-create`, which produced seven commits. Claude's review found typecheck, lint and 252 tests green and the code matching the plan, plus three stray path comments copied from the plan's code blocks. The browser check passed all eight steps. The one wart was "Bad Gateway" shown when the API is down, which comes from the Vite proxy answering 502 (an earlier B-05 behaviour), not from B-07.
+
+**Reflection:** It worked pretty well here.

@@ -117,17 +117,17 @@ problem, persona and rationale.
 
 ### B-06 — List products
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03, B-04, B-05
 
 API:
 
 - `GET /api/products` returns the envelope with `data` and `meta`.
-- Defaults to `pageSize` 30; `pageSize` above 100 is rejected or capped per the
-  shared schema.
+- Defaults to `pageSize` 30; `pageSize` above 100 is rejected with `400 VALIDATION_ERROR`, never clamped.
 - `meta.total` is the count after filters and before pagination;
   `meta.totalPages` is consistent with it.
 - Integration test asserts the default page size and the `meta` values.
+- Scope note: B-06 applies `page` and `pageSize` only, ordered by `id`. `q`, `category` and `sort` are validated by the shared schema but take effect in B-08.
 
 Web:
 
@@ -141,26 +141,44 @@ Web:
 
 ## Phase 2 — Read slices
 
-### B-07 — Product detail
+### B-07 — Product detail and create product
 
-**Status:** Todo
-**Depends on:** B-06
+**Status:** Done
+**Depends on:** B-06, B-08
+
+Merged 2026-09-20 from the former B-07 (product detail) and B-09 (create product), so the
+first write path lands together with the modal that hosts it.
 
 API:
 
 - `GET /api/products/:id` returns `{ "data": { ... } }`.
 - Unknown id returns `404 NOT_FOUND` in the error envelope.
 - Non-numeric id returns `400 VALIDATION_ERROR`.
+- `POST /api/products` validates the full body and returns `201` with the
+  created record.
+- `id`, `meta.createdAt` and `meta.updatedAt` are server-assigned and ignored if
+  the client sends them.
+- Negative price returns `400 VALIDATION_ERROR` with `details` naming `price`.
+- A `category` slug with no matching category returns `400 VALIDATION_ERROR` with
+  `details` naming `category`; a product write never creates a category.
+- Duplicate `sku` returns `409 CONFLICT`.
 
 Web:
 
 - Clicking a row opens a modal showing the full record.
 - Modal has Edit and Delete affordances (wired in B-10).
 - Closes on escape and on backdrop click; focus is trapped while open.
+- One `ProductForm` component, validated client-side with the same shared Zod
+  schema the API uses, so messages match. A "New product" button on the dashboard
+  opens it in the same modal shell as the detail view.
+- On success the list refreshes and the new product is visible.
+- Server `details` entries map back onto the offending form fields — a duplicate
+  sku surfaces on the sku field, not as a banner.
+- Explicit pending and error states on submit.
 
 ### B-08 — Search, sort, filter and pagination
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-06
 
 API:
@@ -174,6 +192,7 @@ API:
   correct `meta.total`.
 - Integration tests cover case-insensitive description match, `-price` ordering
   and the rejected sort field.
+- Replaces B-06's fixed `id` order and applies `q`, `category` and `sort` in the repository. Ties always fall back to `id`, so paging is stable.
 
 Web:
 
@@ -183,7 +202,7 @@ Web:
 - Query params are mirrored into the URL so a filtered view is shareable and the
   back button restores the previous query.
 - Changing any filter resets to page 1.
-- The category select is present but populated in B-11.
+- The category select is present but populated in B-11: it is disabled until then, although a `?category=` in the URL already filters the list.
 
 ---
 
@@ -191,33 +210,12 @@ Web:
 
 ### B-09 — Create product
 
-**Status:** Todo
-**Depends on:** B-08
-
-API:
-
-- `POST /api/products` validates the full body and returns `201` with the
-  created record.
-- `id`, `meta.createdAt` and `meta.updatedAt` are server-assigned and ignored if
-  the client sends them.
-- Negative price returns `400 VALIDATION_ERROR` with `details` naming `price`.
-- A `category` slug with no matching category returns `400 VALIDATION_ERROR` with
-  `details` naming `category`; a product write never creates a category.
-- Duplicate `sku` returns `409 CONFLICT`.
-
-Web:
-
-- One `ProductForm` component, validated client-side with the same shared Zod
-  schema the API uses, so messages match.
-- On success the list refreshes and the new product is visible.
-- Server `details` entries map back onto the offending form fields — a duplicate
-  sku surfaces on the sku field, not as a banner.
-- Explicit pending and error states on submit.
+**Status:** Merged into B-07 (2026-09-20). The ID is kept so earlier references still resolve.
 
 ### B-10 — Edit and delete product
 
-**Status:** Todo
-**Depends on:** B-07, B-09
+**Status:** Done
+**Depends on:** B-07
 
 API:
 
@@ -231,11 +229,11 @@ API:
 
 Web:
 
-- Edit reuses `ProductForm` pre-filled from the record — no second form
+- Edit reuses `ProductForm` pre-filled from the record - no second form
   component.
 - Only changed fields are sent.
 - The detail modal and the list both reflect the update without a full reload.
-- Delete requires a confirmation step — destructive actions are never one click.
+- Delete requires a confirmation step - destructive actions are never one click.
 - On delete success the modal closes and the list refreshes, staying on a valid
   page if the last row of the page was removed.
 
@@ -347,3 +345,10 @@ B-05 are unchanged. `AI.md` entries and earlier commits and PRs use the old IDs.
 | B-14 | B-23 |
 | B-15 | B-24 |
 | B-16 | B-25 |
+
+## Merge (2026-09-20)
+
+B-09 (create product) was folded into B-07 (product detail), now "Product detail and
+create product". IDs were not renumbered: B-08 is already done and is referenced by
+commits, PR #8 and `AI.md`. B-09 stays in the file as a pointer, B-10 now depends on
+B-07 alone, and B-07 depends on B-06 and B-08.
