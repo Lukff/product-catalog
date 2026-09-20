@@ -2,11 +2,14 @@
   import type { CreateProductInput, Product } from '@catalog/shared';
   import { tick } from 'svelte';
   import { ApiError } from '../lib/api.js';
+  import { brands } from '../lib/stores/brands.svelte.js';
   import { categories } from '../lib/stores/categories.svelte.js';
   import {
+    brandOptions,
     categoryOptions,
     detailsToFieldErrors,
     EMPTY_VALUES,
+    optionsHint,
     validateProductForm,
     valuesFromProduct,
     type FieldErrors,
@@ -60,15 +63,19 @@
   const originalCategory = product?.category ?? '';
   const options = $derived(categoryOptions(categories.slugs, originalCategory));
   const categoryHint = $derived(
-    categories.status === 'error'
-      ? 'Could not load the categories.'
-      : categories.status === 'ready' && categories.slugs.length === 0
-        ? 'No categories yet. Add one with Manage in the toolbar.'
-        : '',
+    optionsHint(categories.status, categories.slugs.length, 'categories'),
   );
 
+  // Likewise the brand the form opened with.
+  // svelte-ignore state_referenced_locally
+  const originalBrand = product?.brand ?? '';
+  const brandChoices = $derived(brandOptions(brands.names, originalBrand));
+  const brandHint = $derived(optionsHint(brands.status, brands.names.length, 'brands'));
+
   function hintFor(name: FormField): string | undefined {
-    return name === 'category' ? categoryHint : undefined;
+    if (name === 'category') return categoryHint;
+    if (name === 'brand') return brandHint;
+    return undefined;
   }
 
   $effect(() => {
@@ -139,6 +146,19 @@
           <option value="">Select a category…</option>
           {#each options as slug (slug)}
             <option value={slug}>{slug}</option>
+          {/each}
+        </select>
+      {:else if field.name === 'brand'}
+        <select
+          id="field-{field.name}"
+          class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          aria-invalid={errors[field.name] ? 'true' : undefined}
+          aria-describedby={errors[field.name] ? `error-${field.name}` : undefined}
+          bind:value={values[field.name]}
+        >
+          <option value="">Select a brand…</option>
+          {#each brandChoices as name (name)}
+            <option value={name}>{name}</option>
           {/each}
         </select>
       {:else}

@@ -8,6 +8,7 @@
   import { catalog } from '../lib/stores/catalog.svelte.js';
   import { productDialog } from '../lib/stores/product-dialog.svelte.js';
   import { stats } from '../lib/stores/stats.svelte.js';
+  import BrandManager from './BrandManager.svelte';
   import CategoryManager from './CategoryManager.svelte';
   import ProductDialog from './ProductDialog.svelte';
 
@@ -132,4 +133,5 @@
 
   <ProductDialog />
   <CategoryManager />
+  <BrandManager />
 </section>

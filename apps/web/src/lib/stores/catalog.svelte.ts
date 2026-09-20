@@ -56,6 +56,7 @@ export class CatalogStore {
           pageSize: this.params.pageSize,
           q: this.params.q,
           category: this.params.category,
+          brand: this.params.brand,
           stockStatus: this.params.stockStatus,
           sort: this.params.sort,
         },

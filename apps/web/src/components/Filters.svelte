@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SortParam } from '@catalog/shared';
   import { onDestroy, onMount } from 'svelte';
+  import { brands } from '../lib/stores/brands.svelte.js';
   import { catalog } from '../lib/stores/catalog.svelte.js';
   import { categories } from '../lib/stores/categories.svelte.js';
 
@@ -30,7 +31,10 @@
     }, SEARCH_DEBOUNCE_MS);
   }
 
-  onMount(() => void categories.load());
+  onMount(() => {
+    void categories.load();
+    void brands.load();
+  });
   onDestroy(() => clearTimeout(timer));
 </script>
 
@@ -74,6 +78,34 @@
         type="button"
         class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
         onclick={() => categories.openManager()}
+      >
+        Manage
+      </button>
+    </div>
+  </div>
+
+  <div>
+    <label for="brand" class="block text-xs font-medium text-slate-600">Brand</label>
+    <div class="mt-1 flex gap-2">
+      <select
+        id="brand"
+        class="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        value={catalog.params.brand}
+        onchange={(event) => void catalog.update({ brand: event.currentTarget.value })}
+      >
+        <option value="">All brands</option>
+        {#each brands.names as name (name)}
+          <option value={name}>{name}</option>
+        {/each}
+        <!-- A ?brand= in the URL that is not (or not yet) in the list is still shown. -->
+        {#if catalog.params.brand && !brands.names.includes(catalog.params.brand)}
+          <option value={catalog.params.brand}>{catalog.params.brand}</option>
+        {/if}
+      </select>
+      <button
+        type="button"
+        class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
+        onclick={() => brands.openManager()}
       >
         Manage
       </button>

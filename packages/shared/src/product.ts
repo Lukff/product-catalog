@@ -17,7 +17,10 @@ const text = (max: number) =>
  * segment of `DELETE /api/brands/:name`, so a `/` is rejected. Shared with the product
  * `brand` field and the list-query `brand` filter.
  */
-export const brandNameSchema = text(100).refine((name) => !name.includes('/'), 'must not contain "/"');
+export const brandNameSchema = text(100).refine(
+  (name) => !name.includes('/'),
+  'must not contain "/"',
+);
 
 const hasAtMostTwoDecimals = (value: number) => Number(value.toFixed(2)) === value;
 

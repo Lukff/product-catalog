@@ -12,10 +12,12 @@ describe('paramsFromSearch', () => {
       pageSize: 50,
       q: 'flux',
       category: 'kitchen',
+      brand: 'Acme Corp',
       stockStatus: 'low',
       sort: '-price',
     };
-    const search = 'page=3&pageSize=50&q=flux&category=kitchen&stockStatus=low&sort=-price';
+    const search =
+      'page=3&pageSize=50&q=flux&category=kitchen&brand=Acme+Corp&stockStatus=low&sort=-price';
 
     expect(paramsFromSearch(`?${search}`)).toEqual(expected);
     expect(paramsFromSearch(search)).toEqual(expected);
@@ -40,6 +42,7 @@ describe('paramsToSearch', () => {
     );
     expect(paramsToSearch({ ...DEFAULT_PARAMS, page: 2, pageSize: 10 })).toBe('page=2&pageSize=10');
     expect(paramsToSearch({ ...DEFAULT_PARAMS, stockStatus: 'out' })).toBe('stockStatus=out');
+    expect(paramsToSearch({ ...DEFAULT_PARAMS, brand: 'Acme Corp' })).toBe('brand=Acme+Corp');
   });
 
   it('round-trips through paramsFromSearch, including characters that need encoding', () => {
@@ -48,6 +51,7 @@ describe('paramsToSearch', () => {
       pageSize: 10,
       q: 'flux & capacitor 50%',
       category: 'home-decor',
+      brand: 'Acme & Sons',
       stockStatus: 'low',
       sort: 'stock',
     } as const;
