@@ -1,7 +1,8 @@
 <script lang="ts">
   import { stockStatus, type Product, type StockStatus } from '@catalog/shared';
 
-  let { products }: { products: Product[] } = $props();
+  let { products, onselect }: { products: Product[]; onselect: (product: Product) => void } =
+    $props();
 
   const badges: Record<StockStatus, { label: string; classes: string }> = {
     out: { label: 'Out of stock', classes: 'bg-red-100 text-red-800' },
@@ -27,9 +28,12 @@
     <tbody class="divide-y divide-slate-100">
       {#each products as product (product.id)}
         {@const badge = badges[stockStatus(product.stock)]}
-        <tr>
+        <!-- The row click is a mouse convenience; the title button below is the keyboard path (its click bubbles here). -->
+        <tr class="cursor-pointer hover:bg-slate-50" onclick={() => onselect(product)}>
           <td class="px-4 py-3">
-            <div class="font-medium text-slate-900">{product.title}</div>
+            <button type="button" class="text-left font-medium text-slate-900 hover:underline">
+              {product.title}
+            </button>
             <div class="text-xs text-slate-500">{product.sku}</div>
           </td>
           <td class="px-4 py-3 text-slate-700">{product.brand}</td>
