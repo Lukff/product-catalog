@@ -11,3 +11,10 @@ these is picked up, it moves to `backlog.md` as a proper item.
   Mapping `502`, `503` and `504` to the same "Could not reach the server" message
   (the `NETWORK_ERROR` case) in `apps/web/src/lib/api.ts` would fix all of them at
   once. Found while browser-checking B-07 and B-10.
+- **Improve the design of the page.** The UI is functional but plain: a bare
+  "Product Catalog" heading, default slate Tailwind styling, and a table with the
+  toolbar above it. Nothing has had a dedicated visual pass yet. Candidates to look at
+  are the page header and layout, the table's density and hierarchy, the modal and its
+  form, the empty and error states, the responsive layout on narrow screens, and a
+  favicon (the browser requests one and gets a `404` on every load). The metric strip
+  is still missing and depends on the custom-feature decision (D-2 in `backlog.md`).
