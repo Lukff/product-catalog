@@ -434,6 +434,25 @@ Web:
 - **Standing rule for every API item (B-06 onward):** a new route must have its
   operation in `apps/api/src/openapi/document.ts`. A test fails otherwise.
 
+### B-19 — Icon library and icon buttons
+
+**Status:** Todo
+**Depends on:** B-07, B-10, B-11, B-17, B-18
+
+- Add an icon library to `apps/web` (a Svelte-compatible, tree-shakeable one, e.g.
+  `lucide-svelte`); the choice and why go in `technical-decisions.md` in the same
+  change.
+- Replace the text label with an icon on a few action buttons where the meaning is
+  obvious — for example edit, delete, close and remove-category or remove-brand. Primary actions
+  such as "New product" keep their text.
+- Every icon-only button keeps an accessible name (`aria-label`, plus a `title`
+  tooltip); the icon itself is `aria-hidden`.
+- Icons use the current text colour and a consistent size, so they follow the
+  existing Tailwind styling and the destructive/confirm states.
+- Existing web tests that find these buttons by visible text are updated to find
+  them by accessible name; `pnpm typecheck`, `pnpm lint` and `pnpm test` stay green.
+- Out of scope: an icon set for the whole app, custom SVG assets, animations.
+
 ---
 
 ## Renumbering (2026-09-19)
