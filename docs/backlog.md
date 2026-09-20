@@ -321,6 +321,7 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
 **Depends on:** B-05
 
 - Complete local setup: install, migrate, seed, run both apps.
+- Points to the API docs at `/api/docs` (Swagger UI) and `/api/openapi.json`.
 - Architecture notes, data-model notes and open questions.
 - Rationale for the custom feature (problem, persona, why chosen).
 - Everything left incomplete is written up as a documented next step —
@@ -337,3 +338,15 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
   resolved — written as work proceeds, not reconstructed at the end.
 - Entries use the `ai-log` skill and are never written without the user's own
   input.
+
+### B-25 — API documentation (Swagger)
+
+**Status:** Done
+**Depends on:** B-03
+
+- Swagger UI at `/api/docs` and the OpenAPI 3.1 document at `/api/openapi.json`,
+  describing every operation in `technical-decisions.md` §3.2.
+- Schemas are generated from `packages/shared`; operations without a route are
+  flagged "Not implemented yet" automatically.
+- **Standing rule for every API item (B-06 onward):** a new route must have its
+  operation in `apps/api/src/openapi/document.ts`. A test fails otherwise.
