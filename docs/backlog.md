@@ -302,7 +302,7 @@ Web:
 
 ### B-14 — README
 
-**Status:** Todo
+**Status:** In progress — written for what exists today; custom-feature rationale waits on D-2, and the status section is updated as each slice lands
 **Depends on:** B-05
 
 - Complete local setup: install, migrate, seed, run both apps.

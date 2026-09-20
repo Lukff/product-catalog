@@ -315,3 +315,11 @@ committing. The category select is disabled until B-11, as the backlog says.
 **What happened:** The work was split to save tokens: Claude did the planning and the verification, Gemini did the implementation. The plan went to Gemini on `feat/b-07-product-detail-and-create`, which produced seven commits. Claude's review found typecheck, lint and 252 tests green and the code matching the plan, plus three stray path comments copied from the plan's code blocks. The browser check passed all eight steps. The one wart was "Bad Gateway" shown when the API is down, which comes from the Vite proxy answering 502 (an earlier B-05 behaviour), not from B-07.
 
 **Reflection:** It worked pretty well here.
+
+## 2026-09-20 — README (B-14)
+
+**Context:** B-14 was the last documentation item still open. Only the API skeleton, seed data, Swagger docs and web scaffold existed on the branch I started from, with the product routes and the custom feature (D-2) still open. It serves the brief's README deliverable and the backlog's B-14.
+
+**Tooling & prompts:** Claude Code on Sonnet 5, in a background session. The prompt was just "work on the readme task", with no further detail. Claude found B-14 in `docs/backlog.md`, worked in a separate git worktree (branch `docs/b-14-readme`), and wrote from `docs/technical-decisions.md` and the repo's actual scripts and config.
+
+**What happened:** I asked for the README early, on purpose, and then waited for the changes to land so it would be more complete. Claude's first pass (commit `40dbd64`) described what existed then, said plainly that the product routes and UI were not built, and left the custom-feature section as a placeholder waiting on D-2. Once main had B-06, B-07, B-08 and B-10, I asked Claude to look at what changed in main and update the README. It merged main in and reworked the status, architecture, assumptions, testing and next-steps sections (commit `2a1fc31`). The README now describes a working catalog, with B-11 (categories) and B-12 (custom feature) still open, so B-14 stays In progress.
