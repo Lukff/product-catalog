@@ -8,22 +8,64 @@ A full-stack product catalog: a Svelte 5 single-page app on top of a Hono + SQLi
 
 - Node.js 20.12 or newer (CI runs Node 22)
 - pnpm, pinned in the root `packageManager` field. Enable it with `corepack enable`; no global pnpm install is needed.
+- Free local ports **3000** (API) and **5173** (web)
 
 No external services are required. The database is a SQLite file.
 
 ## Run it locally
 
+From a fresh clone, in the repository root:
+
 ```bash
 corepack enable
 pnpm install
-cp apps/api/.env.example apps/api/.env   # optional: the defaults below apply without it
-pnpm db:seed                             # applies migrations, then loads the seed data
-pnpm dev                                 # API on :3000 and web on :5173
+pnpm db:seed     # creates the database, applies migrations, loads the seed data
+pnpm dev         # API on :3000 and web on :5173
 ```
 
-Open <http://localhost:5173>. The Vite dev server proxies `/api` to the API, so no CORS setup is needed.
+Then open <http://localhost:5173>. You should see the catalog with 36 products and the metric strip above the table.
 
-`pnpm install` also installs the Husky pre-commit hook (through the root `prepare` script). `better-sqlite3` is pinned to 12.x so it installs a prebuilt binary and needs no C++ toolchain on Windows.
+- **`pnpm db:seed` is required the first time.** The API does not run migrations when it starts, so without this step it fails on every request with "no such table". Use `pnpm db:migrate` instead if you want an empty catalog.
+- **Ports.** The Vite dev server proxies `/api` to `http://localhost:3000`, so the browser stays same-origin and no CORS setup is needed. That target is fixed in `apps/web/vite.config.ts`: if you change `PORT`, change it there too.
+- **Optional config.** The defaults work as is. To override them, `cp apps/api/.env.example apps/api/.env` (see [Configuration](#configuration)).
+- **Stop** both servers with Ctrl+C.
+- **Windows.** The commands above work in PowerShell, cmd and Git Bash, except `cp`, which is `copy` in cmd. `better-sqlite3` is pinned to 12.x so it installs a prebuilt binary and needs no C++ toolchain.
+
+`pnpm install` also installs the Husky pre-commit hook (through the root `prepare` script).
+
+### Run the two apps separately
+
+`pnpm dev` starts both in one terminal. To see each one's logs on its own, use two terminals:
+
+```bash
+pnpm --filter @catalog/api dev    # API with file watching, http://localhost:3000
+pnpm --filter @catalog/web dev    # Vite dev server, http://localhost:5173
+```
+
+### Check that it works
+
+```bash
+curl "http://localhost:3000/api/products?pageSize=2"   # JSON with "data" and "meta"
+pnpm test                                              # all workspaces
+```
+
+The API docs are at <http://localhost:3000/api/docs> (see [API documentation](#api-documentation)).
+
+### Production build
+
+`pnpm --filter @catalog/web build` writes the SPA to `apps/web/dist`, and `pnpm --filter @catalog/web preview` serves that build on <http://localhost:4173> (start the API too, since preview proxies `/api` the same way as dev). The API does not serve the built files itself, and there is no deployment setup; this is a local-run project.
+
+### Troubleshooting
+
+| Symptom                                                       | Cause and fix                                                                                        |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `no such table` errors                                        | The database has not been created. Run `pnpm db:seed`.                                               |
+| `EADDRINUSE` on startup                                       | Port 3000 or 5173 is taken. Stop the other process, or set `PORT` (and update the proxy, see above). |
+| Page loads but the list shows an error                        | The API is not running. Start it with `pnpm dev`, and check <http://localhost:3000/api/products>.    |
+| `pnpm: command not found`                                     | Run `corepack enable`.                                                                               |
+| Unsupported Node version                                      | Install Node 20.12 or newer.                                                                         |
+| `pnpm install` fails on `better-sqlite3`                      | Use Node 20 or 22 so the prebuilt binary is found; other versions may compile from source and need a C++ toolchain. |
+| Data looks wrong after editing `seed.json`                    | Seeding never overwrites existing rows. Reset the database (below).                                  |
 
 ### Scripts
 
@@ -37,6 +79,7 @@ Open <http://localhost:5173>. The Vite dev server proxies `/api` to the API, so 
 | `pnpm lint`                        | ESLint and `prettier --check`                                                     |
 | `pnpm format`                      | `prettier --write`                                                                |
 | `pnpm --filter @catalog/api start` | Runs the API once, without file watching                                          |
+| `pnpm --filter @catalog/web build` | Builds the SPA into `apps/web/dist`                                               |
 
 ### Configuration
 
@@ -186,6 +229,7 @@ Working today, end to end (API and web):
 - Editing and deleting a product from the modal (B-10).
 - Listing, adding and removing categories, with the toolbar's category select and the product form's category select both filled from the API (B-11).
 - Brands as their own table: listing, adding and removing them, a toolbar brand filter mirrored into the URL, and a brand select in the product form (B-17). Both selects in the form can create a new category or brand inline (B-18).
+- Lucide icons on the close, edit, delete and remove buttons (B-19), and prices stored as integer cents (B-20).
 - The custom feature: the metric strip, the Low stock and Out of stock filter tiles and `GET /api/products/stats` (B-12).
 - The shared contract with its tests, and CI.
 
