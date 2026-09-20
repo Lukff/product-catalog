@@ -21,7 +21,10 @@ describe('productStatsSchema', () => {
   });
 
   it('requires every field', () => {
-    const { lowStock: _omitted, ...partial } = valid;
-    expect(productStatsSchema.safeParse(partial).success).toBe(false);
+    for (const field of Object.keys(valid)) {
+      const partial: Record<string, number> = { ...valid };
+      delete partial[field];
+      expect(productStatsSchema.safeParse(partial).success, field).toBe(false);
+    }
   });
 });

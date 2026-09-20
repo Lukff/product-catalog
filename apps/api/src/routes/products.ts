@@ -14,6 +14,9 @@ export function productRoutes(service: ProductService) {
   // A ZodError from `parse` is turned into `400 VALIDATION_ERROR` by the error handler.
   routes.get('/', (c) => c.json(service.list(listQuerySchema.parse(c.req.query()))));
 
+  // Registered before `/:id`, or "stats" would be parsed as a product id.
+  routes.get('/stats', (c) => c.json({ data: service.stats() }));
+
   routes.get('/:id', (c) => {
     const { id } = productIdParamSchema.parse(c.req.param());
     return c.json({ data: service.get(id) });
