@@ -17,6 +17,7 @@ Reference document for the Full Stack Product Catalog. It records **what** we bu
 | Lint / format | ESLint (flat config, `typescript-eslint`) + Prettier | Standard, widely understood toolchain; `eslint-plugin-svelte` and `prettier-plugin-svelte` slot in when the web app is scaffolded. |
 | Backend router | Hono | Tiny, fast, standard `Request`/`Response`, first-class testability (`app.request()` needs no live port). |
 | Validation | Zod | A single schema drives runtime validation, inferred TS types, and client-side form validation. |
+| API docs | OpenAPI 3.1 + Swagger UI (`@hono/swagger-ui`) | Interactive docs at `/api/docs`, built from the same shared Zod schemas the server validates with, so the documentation cannot drift from the contract. See §3.4. |
 | Database | SQLite (file-based, `better-sqlite3` pinned to 12.x) | `pnpm start` works with zero external services; still a real relational DB. Held on 12.x because 13 dropped prebuilt binaries and compiles from source, which needs a C++ toolchain (Visual Studio) on Windows; 12.x downloads a prebuilt binary and installs with no compiler. pnpm only runs its install script because `better-sqlite3` is allow-listed in `pnpm-workspace.yaml`. |
 | DB access | Drizzle ORM | Typed queries, migrations, and a schema file that doubles as data-model documentation. Swappable to Postgres later. |
 | Frontend | Svelte 5 + Vite | Minimal boilerplate, runes cover all state needs without a state library, fast builds. |
@@ -44,6 +45,7 @@ product-catalog/
         config.ts         PORT, DATABASE_PATH
         env.ts            loads apps/api/.env into process.env; never overrides real variables
         errors.ts         AppError, ValidationError, NotFoundError, ConflictError
+        openapi/          the OpenAPI document (built from the shared schemas) and the /api/docs + /api/openapi.json routes
         middleware/       error-handler.ts: the one place error responses are written
         routes/           HTTP layer: parse, validate, serialize
         services/         business rules, timestamps, error mapping
@@ -124,6 +126,20 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 | `INTERNAL_ERROR` | 500 | Unhandled; generic message, real error logged server-side. |
 
 A single Hono error-handling middleware (`middleware/error-handler.ts`) maps thrown domain errors to this shape, so no route hand-writes an error response. It handles three cases: an `AppError` (`ValidationError`, `NotFoundError`, `ConflictError`) becomes its own code and status and may carry `details`; a `ZodError` becomes `400 VALIDATION_ERROR` with `details` built by `zodIssuesToDetails()` from `packages/shared` (the same helper the web form uses, so paths and messages agree; an issue on the whole payload has the empty path); anything else becomes a generic `500` whose real error is logged and never sent. `app.notFound` returns the `404 NOT_FOUND` envelope for unknown routes.
+
+### 3.4 API documentation
+
+Swagger UI is served at `/api/docs` and the raw OpenAPI 3.1 document at `/api/openapi.json`. Both are built by `apps/api/src/openapi/` and mounted by `createApp`.
+
+- **Contract-first.** The document describes every operation in §3.2, including request bodies, the documented status codes and the §3.3 error shape, whether or not its route exists yet.
+- **Built from the shared schemas.** Request and response schemas are generated from `packages/shared` with `z.toJSONSchema` (`io: 'input'` for bodies and query strings, `io: 'output'` for responses), so a rule changed once, such as the price bound or the `pageSize` cap, changes the docs too. `packages/shared` re-exports `toJSONSchema` and `ZodType` so the API needs no `zod` dependency of its own. Only the envelope's `PageMeta` and the `Error` shape are described by hand, because they are TypeScript interfaces in `packages/shared`, not Zod schemas; the `Error.code` enum is the shared `ERROR_CODES`.
+- **Implementation status is derived, not maintained.** Each request reads `app.routes`; an operation with no registered route is flagged `x-implemented: false` and its description starts with "Not implemented yet". It flips on by itself when the route lands.
+- **Documentation is enforced.** A test fails if the real app registers a route that is missing from the document, so every API item that adds a route must add its operation to `apps/api/src/openapi/document.ts`.
+- **Examples are explicit.** Success bodies use the brief's sample products and each error status has its own example (a `409` never shows a validation error). Tests validate the request and success examples against the shared schemas, so they cannot rot.
+- **Categories on the wire are `{ slug }`** (`categorySchema` and `createCategorySchema` in `packages/shared`); the surrogate id is never exposed.
+- **Trade-off:** Swagger UI loads its JavaScript and CSS from the jsDelivr CDN, so the `/api/docs` page needs internet access. `/api/openapi.json` does not.
+
+Rejected: `@hono/zod-openapi` (routes must be written in its style, and the UI would be empty until B-06), and a hand-written `openapi.yaml` (duplicates the contract, which CLAUDE.md forbids).
 
 ## 4. Data model
 

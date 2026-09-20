@@ -186,3 +186,28 @@ the `/api` dev proxy to `:3000`, and `lib/api.ts`, a typed fetch client that unw
 were extended to `.svelte` files. `svelte-check` could not resolve `.svelte` imports
 until `allowJs` was set in the web `tsconfig.json`, which is now documented in
 `docs/technical-decisions.md`. Draft PR #4 was opened.
+
+## 2026-09-19 — API documentation with Swagger (B-25)
+
+**Context:** B-01 to B-04 were merged, so the API had a skeleton, schema and seed but
+no routes yet (those start at B-06). A separate session was building the web scaffold
+(B-05) in its own git worktree. Swagger was not on the backlog, so it was added as
+B-25.
+
+**Tooling & prompts:** Claude Code on Sonnet 5, prompted with "I got other session
+working on b-05. let's add a swagger to the api here". The model classified it as
+architectural and used the superpowers `brainstorming` skill, putting one
+multiple-choice prompt to me on how to produce the docs (three options). It built the
+feature test-first with `test-driven-development`, then checked the result in a real
+browser with Playwright.
+
+**What happened:** I chose the contract-first approach: it is good for delineating
+what is already planned. The model built an OpenAPI 3.1 document for all seven
+operations in `docs/technical-decisions.md` §3.2, generated from the shared Zod
+schemas and served as Swagger UI at `/api/docs` and as JSON at `/api/openapi.json`.
+Operations without a route are flagged "Not implemented yet" automatically, and a
+test fails if the app ever registers a route the document does not describe. The
+browser check found two problems the tests had not: the 409 and 500 examples showed a
+validation error, and the 201 example showed a random string for the category. The
+model fixed both with explicit examples, writing the failing tests first. It also
+caught a typecheck failure that its own grep-based check had missed.
