@@ -166,6 +166,27 @@ never overwrites edits. Along the way the model's first `.gitattributes` commit
 had also swept in a staged file rename; it re-split the unpushed history so each
 commit holds only its own change.
 
+## 2026-09-19 — Web scaffold (B-05)
+
+**Context:** B-01 to B-04 were done and merged (the API had its skeleton and seed data).
+B-05, the web app scaffold, depends only on B-02 (the shared contract package), so
+nothing was left blocking it.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was a single line,
+"do the web scaffold b-05", with no design step first. Afterwards I asked it to run
+the app locally ("run it locally for me to check how it's starting") and then to stop
+the servers.
+
+**What happened:** This is a step on the web app with no more dependencies blocking
+it, started independently. The model read the B-05 item in `docs/backlog.md` and the
+web sections of `docs/technical-decisions.md`, worked in its own worktree on
+`feat/b-05-web-scaffold`, and built the Vite + Svelte 5 + Tailwind app in `apps/web`,
+the `/api` dev proxy to `:3000`, and `lib/api.ts`, a typed fetch client that unwraps
+`data` and rejects with a typed `ApiError`, with 9 unit tests. ESLint and Prettier
+were extended to `.svelte` files. `svelte-check` could not resolve `.svelte` imports
+until `allowJs` was set in the web `tsconfig.json`, which is now documented in
+`docs/technical-decisions.md`. Draft PR #4 was opened.
+
 ## 2026-09-19 — API documentation with Swagger (B-25)
 
 **Context:** B-01 to B-04 were merged, so the API had a skeleton, schema and seed but

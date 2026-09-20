@@ -102,7 +102,7 @@ problem, persona and rationale.
 
 ### B-05 — Web scaffold
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-02
 
 - Vite + Svelte 5 + Tailwind app builds and serves.
