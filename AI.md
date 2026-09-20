@@ -262,3 +262,23 @@ Prettier, and the implementer had to add a lint parser rule for `*.svelte.ts` fi
 final review found an untracked `.vitest/` directory that broke `pnpm lint`, now ignored.
 The auto-mode classifier denied one reviewer dispatch as "data exfiltration"; it went
 through once narrowed to the docs-only diff.
+
+## 2026-09-20 — Dropping the per-item PRs and lightening the process
+
+**Context:** B-06 had just been merged as PR #8, after being run through a branch, a
+brainstorming step, a written plan, subagents and a PR. The rest of the backlog (B-07 to
+B-12) was still ahead, and this step changes how those items are delivered. It serves no
+single backlog item.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "project decision for the next
+items: stop opening PRs for each. This decision is for timing purposes". The model asked how
+each item should then reach `main` (three options) and I answered "first option".
+
+**What happened:** Each item still gets its own branch. When it is done and its checks pass,
+the branch is merged into `main` locally with `--no-ff`, keeping the history grouped per
+item, and `main` is pushed. No PR is opened per item. The model recorded the rule in its
+memory for this repo.
+
+**Reflection:** All the scaffolding for the workflow and the PRs were a good approach for
+structuring, but it ended up costing too much time, so we are going more directly to
+implementation now for practical reasons.
