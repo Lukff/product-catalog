@@ -1,0 +1,542 @@
+[
+  {
+    "id": 1,
+    "title": "Large Flux Capacitor",
+    "description": "The Large Flux Capacitor provides the maximum motive force for your inter-dimensional aluminum automobile.",
+    "category": "automotive",
+    "price": 9.99,
+    "stock": 42,
+    "brand": "ACME",
+    "sku": "ACM-FC-001",
+    "weight": 4,
+    "meta": {
+      "createdAt": "2025-04-30T09:41:02.053Z",
+      "updatedAt": "2025-04-30T09:41:02.053Z"
+    }
+  },
+  {
+    "id": 2,
+    "title": "Medium Flux Capacitor",
+    "description": "The Medium Flux Capacitor is a great budget option if you don't need to travel far in your inter-dimensional aluminum automobile.",
+    "category": "automotive",
+    "price": 5.99,
+    "stock": 42,
+    "brand": "ACME",
+    "sku": "ACM-FC-002",
+    "weight": 3.25,
+    "meta": {
+      "createdAt": "2025-04-29T19:36:02.053Z",
+      "updatedAt": "2025-04-30T09:41:02.053Z"
+    }
+  },
+  {
+    "id": 3,
+    "title": "Small Flux Capacitor",
+    "description": "The Small Flux Capacitor is the entry-level model, fine for short hops between adjacent dimensions.",
+    "category": "automotive",
+    "price": 3.49,
+    "stock": 0,
+    "brand": "ACME",
+    "sku": "ACM-FC-003",
+    "weight": 1.5,
+    "meta": {
+      "createdAt": "2025-05-01T14:50:59.053Z",
+      "updatedAt": "2025-05-01T14:50:59.053Z"
+    }
+  },
+  {
+    "id": 4,
+    "title": "Dimensional Steering Wheel Cover",
+    "description": "Hand-stitched leather cover that stays put even when the road folds back on itself.",
+    "category": "automotive",
+    "price": 24.5,
+    "stock": 17,
+    "brand": "Globex",
+    "sku": "GLX-AU-004",
+    "weight": 0.8,
+    "meta": {
+      "createdAt": "2025-05-05T07:26:58.053Z",
+      "updatedAt": "2025-05-13T07:48:54.053Z"
+    }
+  },
+  {
+    "id": 5,
+    "title": "Anti-Gravity Tire Set",
+    "description": "A set of four titanium-belted tires that keep a heavy vehicle a polite ten centimetres above the ground.",
+    "category": "automotive",
+    "price": 349,
+    "stock": 3,
+    "brand": "Globex",
+    "sku": "GLX-AU-005",
+    "weight": 22.4,
+    "meta": {
+      "createdAt": "2025-05-09T00:02:57.053Z",
+      "updatedAt": "2025-05-12T00:30:22.053Z"
+    }
+  },
+  {
+    "id": 6,
+    "title": "Turbo Exhaust Whistle",
+    "description": "Clip-on exhaust whistle that adds a satisfying rising note as the engine spools up.",
+    "category": "automotive",
+    "price": 12.75,
+    "stock": 60,
+    "brand": "Vandelay",
+    "sku": "VDL-AU-006",
+    "weight": 0.6,
+    "meta": {
+      "createdAt": "2025-05-12T04:38:56.053Z",
+      "updatedAt": "2025-05-12T04:38:56.053Z"
+    }
+  },
+  {
+    "id": 7,
+    "title": "Temporal Fuel Additive (1L)",
+    "description": "One litre of additive that lets a tank of fuel run slightly further into next Tuesday.",
+    "category": "automotive",
+    "price": 18.9,
+    "stock": 0,
+    "brand": "ACME",
+    "sku": "ACM-AU-007",
+    "weight": 1.1,
+    "meta": {
+      "createdAt": "2025-05-15T21:14:55.053Z",
+      "updatedAt": "2025-05-17T21:53:18.053Z"
+    }
+  },
+  {
+    "id": 8,
+    "title": "Pocket Hologram Projector",
+    "description": "Projects a life-size hologram from a device small enough to lose in a coat pocket.",
+    "category": "electronics",
+    "price": 129.99,
+    "stock": 24,
+    "brand": "Hooli",
+    "sku": "HLI-EL-008",
+    "weight": 0.35,
+    "meta": {
+      "createdAt": "2025-05-19T13:50:54.053Z",
+      "updatedAt": "2025-05-25T14:34:46.053Z"
+    }
+  },
+  {
+    "id": 9,
+    "title": "Quantum Desk Fan",
+    "description": "A whisper-quiet desk fan that is simultaneously on and off until you look at it.",
+    "category": "electronics",
+    "price": 39.95,
+    "stock": 58,
+    "brand": "Initech",
+    "sku": "INI-EL-009",
+    "weight": 1.2,
+    "meta": {
+      "createdAt": "2025-05-23T06:26:53.053Z",
+      "updatedAt": "2025-05-23T06:26:53.053Z"
+    }
+  },
+  {
+    "id": 10,
+    "title": "Noise-Cancelling Headphones",
+    "description": "Over-ear headphones with thirty hours of battery life and a very convincing silence.",
+    "category": "electronics",
+    "price": 199,
+    "stock": 4,
+    "brand": "Hooli",
+    "sku": "HLI-EL-010",
+    "weight": 0.28,
+    "meta": {
+      "createdAt": "2025-05-26T23:02:52.053Z",
+      "updatedAt": "2025-05-31T23:57:42.053Z"
+    }
+  },
+  {
+    "id": 11,
+    "title": "Smart Toaster with Opinions",
+    "description": "A connected toaster that browns evenly and will tell you, unprompted, that you are having too much bread.",
+    "category": "electronics",
+    "price": 59.99,
+    "stock": 31,
+    "brand": "Globex",
+    "sku": "GLX-EL-011",
+    "weight": 2.1,
+    "meta": {
+      "createdAt": "2025-05-30T03:38:51.053Z",
+      "updatedAt": "2025-06-08T03:39:10.053Z"
+    }
+  },
+  {
+    "id": 12,
+    "title": "Solar Phone Charger",
+    "description": "Foldable solar panel that tops up a phone from flat in an afternoon of decent sunshine.",
+    "category": "electronics",
+    "price": 27.49,
+    "stock": 0,
+    "brand": "ACME",
+    "sku": "ACM-EL-012",
+    "weight": 0.4,
+    "meta": {
+      "createdAt": "2025-06-02T20:14:50.053Z",
+      "updatedAt": "2025-06-02T20:14:50.053Z"
+    }
+  },
+  {
+    "id": 13,
+    "title": "Wireless Mechanical Keyboard",
+    "description": "Compact tenkeyless keyboard with tactile switches and a battery that lasts for months.",
+    "category": "electronics",
+    "price": 89,
+    "stock": 45,
+    "brand": "Initech",
+    "sku": "INI-EL-013",
+    "weight": 0.95,
+    "meta": {
+      "createdAt": "2025-06-06T12:50:49.053Z",
+      "updatedAt": "2025-06-14T13:02:06.053Z"
+    }
+  },
+  {
+    "id": 14,
+    "title": "Portable Black Hole Speaker",
+    "description": "A Bluetooth speaker with a surprisingly deep bass response and an event horizon of about four centimetres.",
+    "category": "electronics",
+    "price": 74.5,
+    "stock": 2,
+    "brand": "Hooli",
+    "sku": "HLI-EL-014",
+    "weight": 0.6,
+    "meta": {
+      "createdAt": "2025-06-10T05:26:48.053Z",
+      "updatedAt": "2025-06-13T05:43:34.053Z"
+    }
+  },
+  {
+    "id": 15,
+    "title": "Self-Stirring Saucepan",
+    "description": "Motorised paddle stirs risotto, custard and anything else that needs constant attention.",
+    "category": "kitchen",
+    "price": 34.99,
+    "stock": 40,
+    "brand": "Globex",
+    "sku": "GLX-KT-015",
+    "weight": 1.3,
+    "meta": {
+      "createdAt": "2025-06-13T22:02:47.053Z",
+      "updatedAt": "2025-06-13T22:02:47.053Z"
+    }
+  },
+  {
+    "id": 16,
+    "title": "Cast Iron Skillet 12\"",
+    "description": "Pre-seasoned cast iron skillet that goes from hob to oven to campfire and outlives its owner.",
+    "category": "kitchen",
+    "price": 42,
+    "stock": 27,
+    "brand": "Vandelay",
+    "sku": "VDL-KT-016",
+    "weight": 4.6,
+    "meta": {
+      "createdAt": "2025-06-17T14:38:46.053Z",
+      "updatedAt": "2025-06-19T15:06:30.053Z"
+    }
+  },
+  {
+    "id": 17,
+    "title": "Anvil-Grade Chef Knife",
+    "description": "Forged from a single billet of steel, balanced so that it cuts through a pumpkin without complaint.",
+    "category": "kitchen",
+    "price": 64.25,
+    "stock": 5,
+    "brand": "ACME",
+    "sku": "ACM-KT-017",
+    "weight": 0.42,
+    "meta": {
+      "createdAt": "2025-06-20T19:14:45.053Z",
+      "updatedAt": "2025-06-26T19:47:58.053Z"
+    }
+  },
+  {
+    "id": 18,
+    "title": "Instant Ice Machine",
+    "description": "Makes a full tray of clear ice in six minutes, which is faster than most freezers manage in an hour.",
+    "category": "kitchen",
+    "price": 219.99,
+    "stock": 9,
+    "brand": "Initech",
+    "sku": "INI-KT-018",
+    "weight": 11.8,
+    "meta": {
+      "createdAt": "2025-06-24T11:50:44.053Z",
+      "updatedAt": "2025-06-24T11:50:44.053Z"
+    }
+  },
+  {
+    "id": 19,
+    "title": "Ceramic Mug Set (4)",
+    "description": "Four stoneware mugs with a generous handle and a glaze that survives the dishwasher.",
+    "category": "kitchen",
+    "price": 21,
+    "stock": 73,
+    "brand": "Vandelay",
+    "sku": "VDL-KT-019",
+    "weight": 2.4,
+    "meta": {
+      "createdAt": "2025-06-28T04:26:43.053Z",
+      "updatedAt": "2025-07-03T05:10:54.053Z"
+    }
+  },
+  {
+    "id": 20,
+    "title": "Rocket-Powered Blender",
+    "description": "A blender with a jet-assisted motor that turns a frozen pineapple into a smoothie in four seconds.",
+    "category": "kitchen",
+    "price": 99.99,
+    "stock": 0,
+    "brand": "ACME",
+    "sku": "ACM-KT-020",
+    "weight": 3.9,
+    "meta": {
+      "createdAt": "2025-07-01T21:02:42.053Z",
+      "updatedAt": "2025-07-10T21:52:22.053Z"
+    }
+  },
+  {
+    "id": 21,
+    "title": "Two-Person Pop-Up Tent",
+    "description": "Pitches in under a minute, packs into a flat disc and stays dry in a proper downpour.",
+    "category": "outdoors",
+    "price": 149,
+    "stock": 14,
+    "brand": "Globex",
+    "sku": "GLX-OD-021",
+    "weight": 3.8,
+    "meta": {
+      "createdAt": "2025-07-05T13:38:41.053Z",
+      "updatedAt": "2025-07-05T13:38:41.053Z"
+    }
+  },
+  {
+    "id": 22,
+    "title": "Insulated Trail Flask",
+    "description": "Double-walled steel flask that keeps coffee hot for twelve hours and water cold for twenty-four.",
+    "category": "outdoors",
+    "price": 26.5,
+    "stock": 88,
+    "brand": "Vandelay",
+    "sku": "VDL-OD-022",
+    "weight": 0.55,
+    "meta": {
+      "createdAt": "2025-07-08T18:14:40.053Z",
+      "updatedAt": "2025-07-16T18:15:18.053Z"
+    }
+  },
+  {
+    "id": 23,
+    "title": "Rocket Skates",
+    "description": "Lace-up skates with a small solid-fuel booster in each heel. Helmet strongly recommended.",
+    "category": "outdoors",
+    "price": 179.99,
+    "stock": 1,
+    "brand": "ACME",
+    "sku": "ACM-OD-023",
+    "weight": 2.7,
+    "meta": {
+      "createdAt": "2025-07-12T10:50:39.053Z",
+      "updatedAt": "2025-07-15T10:56:46.053Z"
+    }
+  },
+  {
+    "id": 24,
+    "title": "Compass That Points to Snacks",
+    "description": "A pocket compass whose needle is calibrated to the nearest vending machine.",
+    "category": "outdoors",
+    "price": 11.99,
+    "stock": 120,
+    "brand": "Initech",
+    "sku": "INI-OD-024",
+    "weight": 0.1,
+    "meta": {
+      "createdAt": "2025-07-16T03:26:38.053Z",
+      "updatedAt": "2025-07-16T03:26:38.053Z"
+    }
+  },
+  {
+    "id": 25,
+    "title": "Ultralight Sleeping Bag",
+    "description": "Down-filled bag rated to minus five degrees that weighs about as much as a bag of sugar.",
+    "category": "outdoors",
+    "price": 129,
+    "stock": 19,
+    "brand": "Hooli",
+    "sku": "HLI-OD-025",
+    "weight": 1.05,
+    "meta": {
+      "createdAt": "2025-07-19T20:02:37.053Z",
+      "updatedAt": "2025-07-21T20:19:42.053Z"
+    }
+  },
+  {
+    "id": 26,
+    "title": "Giant Rubber Band (Industrial)",
+    "description": "A very large, very stretchy rubber band, suitable for launching things that were not designed to fly.",
+    "category": "outdoors",
+    "price": 8.75,
+    "stock": 3,
+    "brand": "ACME",
+    "sku": "ACM-OD-026",
+    "weight": 0.9,
+    "meta": {
+      "createdAt": "2025-07-23T12:38:36.053Z",
+      "updatedAt": "2025-07-29T13:01:10.053Z"
+    }
+  },
+  {
+    "id": 27,
+    "title": "Ergonomic Standing Desk",
+    "description": "Electric sit-stand desk with four memory presets and a solid bamboo top.",
+    "category": "office",
+    "price": 449,
+    "stock": 6,
+    "brand": "Initech",
+    "sku": "INI-OF-027",
+    "weight": 32,
+    "meta": {
+      "createdAt": "2025-07-27T05:14:35.053Z",
+      "updatedAt": "2025-07-27T05:14:35.053Z"
+    }
+  },
+  {
+    "id": 28,
+    "title": "Stapler That Never Jams",
+    "description": "All-metal stapler that drives a hundred sheets through in a single, confident thunk.",
+    "category": "office",
+    "price": 14.99,
+    "stock": 210,
+    "brand": "Initech",
+    "sku": "INI-OF-028",
+    "weight": 0.5,
+    "meta": {
+      "createdAt": "2025-07-30T09:50:34.053Z",
+      "updatedAt": "2025-08-04T10:24:06.053Z"
+    }
+  },
+  {
+    "id": 29,
+    "title": "Dry-Erase Wall Paint (1L)",
+    "description": "Turns any smooth wall into a whiteboard. Covers roughly four square metres per litre.",
+    "category": "office",
+    "price": 44,
+    "stock": 0,
+    "brand": "Hooli",
+    "sku": "HLI-OF-029",
+    "weight": 1.4,
+    "meta": {
+      "createdAt": "2025-08-03T02:26:33.053Z",
+      "updatedAt": "2025-08-12T03:05:34.053Z"
+    }
+  },
+  {
+    "id": 30,
+    "title": "Vertical Ergonomic Mouse",
+    "description": "A handshake-grip mouse that takes the strain off the wrist during a long day of spreadsheets.",
+    "category": "office",
+    "price": 32,
+    "stock": 64,
+    "brand": "Vandelay",
+    "sku": "VDL-OF-030",
+    "weight": 0.15,
+    "meta": {
+      "createdAt": "2025-08-06T19:02:32.053Z",
+      "updatedAt": "2025-08-06T19:02:32.053Z"
+    }
+  },
+  {
+    "id": 31,
+    "title": "Paper Shredder (Cross-Cut)",
+    "description": "Cross-cut shredder that eats ten sheets at a time and quietly forgets what it read.",
+    "category": "office",
+    "price": 79.95,
+    "stock": 11,
+    "brand": "Globex",
+    "sku": "GLX-OF-031",
+    "weight": 6.2,
+    "meta": {
+      "createdAt": "2025-08-10T11:38:31.053Z",
+      "updatedAt": "2025-08-18T12:28:30.053Z"
+    }
+  },
+  {
+    "id": 32,
+    "title": "Cordless Drill",
+    "description": "Eighteen-volt drill with two batteries, a brushless motor and a very forgiving clutch.",
+    "category": "tools",
+    "price": 119,
+    "stock": 22,
+    "brand": "Globex",
+    "sku": "GLX-TL-032",
+    "weight": 1.6,
+    "meta": {
+      "createdAt": "2025-08-14T04:14:30.053Z",
+      "updatedAt": "2025-08-17T05:09:58.053Z"
+    }
+  },
+  {
+    "id": 33,
+    "title": "Precision Screwdriver Set",
+    "description": "Sixty-four bits in a magnetic case, for the screws that manufacturers hide on purpose.",
+    "category": "tools",
+    "price": 19.99,
+    "stock": 95,
+    "brand": "Vandelay",
+    "sku": "VDL-TL-033",
+    "weight": 0.3,
+    "meta": {
+      "createdAt": "2025-08-17T08:50:29.053Z",
+      "updatedAt": "2025-08-17T08:50:29.053Z"
+    }
+  },
+  {
+    "id": 34,
+    "title": "Portable Hole (Adhesive, Black)",
+    "description": "A peel-and-stick hole that opens onto whatever is on the other side of a solid wall.",
+    "category": "tools",
+    "price": 15.5,
+    "stock": 35,
+    "brand": "ACME",
+    "sku": "ACM-TL-034",
+    "weight": 0.05,
+    "meta": {
+      "createdAt": "2025-08-21T01:26:28.053Z",
+      "updatedAt": "2025-08-23T01:32:54.053Z"
+    }
+  },
+  {
+    "id": 35,
+    "title": "Laser Level",
+    "description": "Self-levelling cross-line laser that projects a bright green line visible across a large room.",
+    "category": "tools",
+    "price": 54,
+    "stock": 5,
+    "brand": "Hooli",
+    "sku": "HLI-TL-035",
+    "weight": 0.6,
+    "meta": {
+      "createdAt": "2025-08-24T18:02:27.053Z",
+      "updatedAt": "2025-08-30T18:14:22.053Z"
+    }
+  },
+  {
+    "id": 36,
+    "title": "Magnetic Wrist Band",
+    "description": "A strong magnetic band that holds screws, nails and drill bits so that both hands stay free.",
+    "category": "tools",
+    "price": 9.95,
+    "stock": 150,
+    "brand": "Initech",
+    "sku": "INI-TL-036",
+    "weight": 0.08,
+    "meta": {
+      "createdAt": "2025-08-28T10:38:26.053Z",
+      "updatedAt": "2025-08-28T10:38:26.053Z"
+    }
+  }
+]
