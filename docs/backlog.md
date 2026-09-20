@@ -30,12 +30,11 @@ integer FK (`technical-decisions.md` §7.1 option a). The wire contract is uncha
 
 ### D-2 — Unprompted custom feature
 
-See `technical-decisions.md` §7.2. Candidates: low-stock alerts with inventory
-metrics, audit log of mutations, bulk operations, CSV import/export. The choice
-also determines the contents of the SPA metric strip. Must be documented with
-problem, persona and rationale.
+**Resolved 2026-09-20:** low-stock alerts with inventory metrics
+(`technical-decisions.md` §7.2). Persona: a stock manager who needs to see what
+to reorder.
 
-**Gates:** B-12.
+**Gated:** B-12 — now unblocked.
 
 ---
 
@@ -266,14 +265,26 @@ Web:
 
 ### B-12 — Custom feature and metric strip
 
-**Status:** Blocked — D-2
+**Status:** Todo
 **Depends on:** B-06, D-2
 
-- Scope, endpoints and acceptance criteria to be filled in once D-2 is resolved.
-- Whatever it is, it ships with integration tests and is documented in
-  `README.md` with problem, persona and rationale.
-- Web: metric strip contents follow from D-2.
+- API: `GET /api/products/stats` returns `{ data: { total, inStock, lowStock,
+  outOfStock, inventoryValue } }`, catalog-wide (not scoped by search or
+  category). Registered before `/:id`. The response schema lives in
+  `packages/shared`.
+- API: `GET /api/products` accepts `stockStatus=low|out|in`, composing with `q`,
+  `category`, `sort` and pagination; any other value is `400 VALIDATION_ERROR`.
+- The `low` and `out` predicates use `LOW_STOCK_THRESHOLD` from
+  `packages/shared`, so they cannot drift from `stockStatus()`.
+- Integration tests: stats counts match `stockStatus()` at stock 0, 1, 5 and 6;
+  the filter alone and combined with `category` and `q`; the invalid value.
+- Web: the metric strip shows Total, Low stock, Out of stock and Inventory
+  value. The Low and Out tiles toggle the `stockStatus` filter (clicking the
+  active tile clears it), and the strip refetches after a create, edit or
+  delete. A web test covers the toggle.
+- Documented in `README.md` with problem, persona and rationale.
 - The feature is reachable from the dashboard without a second navigation level.
+- Out of scope: configurable thresholds, notifications, history.
 
 ---
 
