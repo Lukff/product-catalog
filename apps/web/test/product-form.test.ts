@@ -1,9 +1,11 @@
-// apps/web/test/product-form.test.ts
+import type { Product } from '@catalog/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  changedFields,
   detailsToFieldErrors,
   EMPTY_VALUES,
   validateProductForm,
+  valuesFromProduct,
   type ProductFormValues,
 } from '../src/lib/product-form.js';
 
@@ -106,6 +108,77 @@ describe('detailsToFieldErrors', () => {
     expect(detailsToFieldErrors([whole, unknown])).toEqual({
       fields: {},
       unmatched: [whole, unknown],
+    });
+  });
+});
+
+const stored: Product = {
+  id: 5,
+  title: 'Rocket Skates',
+  description: 'Blast off.',
+  category: 'automotive',
+  price: 19.99,
+  stock: 3,
+  brand: 'ACME',
+  sku: 'ACM-1',
+  weight: 2.5,
+  meta: { createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+};
+
+describe('valuesFromProduct', () => {
+  it('turns every form field into the string a user would have typed', () => {
+    expect(valuesFromProduct(stored)).toEqual({
+      title: 'Rocket Skates',
+      description: 'Blast off.',
+      category: 'automotive',
+      brand: 'ACME',
+      sku: 'ACM-1',
+      price: '19.99',
+      stock: '3',
+      weight: '2.5',
+    });
+  });
+
+  it('round-trips through the form validation to the same values', () => {
+    const result = validateProductForm(valuesFromProduct(stored));
+
+    expect(result).toMatchObject({
+      ok: true,
+      input: { price: 19.99, stock: 3, weight: 2.5, title: 'Rocket Skates' },
+    });
+  });
+});
+
+describe('changedFields', () => {
+  function inputFrom(overrides: Record<string, unknown> = {}) {
+    const result = validateProductForm({ ...valuesFromProduct(stored), ...overrides });
+    if (!result.ok) throw new Error('expected a valid form');
+    return result.input;
+  }
+
+  it('is empty when nothing changed', () => {
+    expect(changedFields(stored, inputFrom())).toEqual({});
+  });
+
+  it('holds only the fields that changed', () => {
+    expect(changedFields(stored, inputFrom({ price: '7.5', stock: '0' }))).toEqual({
+      price: 7.5,
+      stock: 0,
+    });
+  });
+
+  it('does not count a number typed differently as a change', () => {
+    expect(changedFields(stored, inputFrom({ price: '19.990', weight: '2.50' }))).toEqual({});
+  });
+
+  it('treats surrounding whitespace in a trimmed field as no change', () => {
+    expect(changedFields(stored, inputFrom({ title: '  Rocket Skates  ' }))).toEqual({});
+  });
+
+  it('includes a changed category and sku', () => {
+    expect(changedFields(stored, inputFrom({ category: 'tools', sku: 'ACM-2' }))).toEqual({
+      category: 'tools',
+      sku: 'ACM-2',
     });
   });
 });
