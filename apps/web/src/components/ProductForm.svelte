@@ -2,7 +2,9 @@
   import type { CreateProductInput, Product } from '@catalog/shared';
   import { tick } from 'svelte';
   import { ApiError } from '../lib/api.js';
+  import { categories } from '../lib/stores/categories.svelte.js';
   import {
+    categoryOptions,
     detailsToFieldErrors,
     EMPTY_VALUES,
     validateProductForm,
@@ -25,7 +27,6 @@
   interface FieldSpec {
     name: FormField;
     label: string;
-    hint?: string;
     inputmode?: 'decimal' | 'numeric';
     wide?: boolean;
   }
@@ -33,11 +34,7 @@
   const fields: FieldSpec[] = [
     { name: 'title', label: 'Title', wide: true },
     { name: 'description', label: 'Description', wide: true },
-    {
-      name: 'category',
-      label: 'Category',
-      hint: 'Lowercase slug of an existing category, e.g. automotive',
-    },
+    { name: 'category', label: 'Category' },
     { name: 'brand', label: 'Brand' },
     { name: 'sku', label: 'SKU' },
     { name: 'price', label: 'Price', inputmode: 'decimal' },
@@ -57,6 +54,22 @@
   let pending = $state(false);
 
   const editing = $derived(product !== undefined);
+
+  // The category the form opened with stays selectable even if the list does not have it.
+  // svelte-ignore state_referenced_locally
+  const originalCategory = product?.category ?? '';
+  const options = $derived(categoryOptions(categories.slugs, originalCategory));
+  const categoryHint = $derived(
+    categories.status === 'error'
+      ? 'Could not load the categories.'
+      : categories.status === 'ready' && categories.slugs.length === 0
+        ? 'No categories yet. Add one with Manage in the toolbar.'
+        : '',
+  );
+
+  function hintFor(name: FormField): string | undefined {
+    return name === 'category' ? categoryHint : undefined;
+  }
 
   $effect(() => {
     form.querySelector<HTMLElement>('input, textarea')?.focus();
@@ -115,6 +128,19 @@
           aria-invalid={errors[field.name] ? 'true' : undefined}
           aria-describedby={errors[field.name] ? `error-${field.name}` : undefined}
           bind:value={values[field.name]}></textarea>
+      {:else if field.name === 'category'}
+        <select
+          id="field-{field.name}"
+          class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          aria-invalid={errors[field.name] ? 'true' : undefined}
+          aria-describedby={errors[field.name] ? `error-${field.name}` : undefined}
+          bind:value={values[field.name]}
+        >
+          <option value="">Select a category…</option>
+          {#each options as slug (slug)}
+            <option value={slug}>{slug}</option>
+          {/each}
+        </select>
       {:else}
         <input
           id="field-{field.name}"
@@ -127,8 +153,8 @@
           bind:value={values[field.name]}
         />
       {/if}
-      {#if field.hint && !errors[field.name]}
-        <p class="mt-1 text-xs text-slate-500">{field.hint}</p>
+      {#if hintFor(field.name) && !errors[field.name]}
+        <p class="mt-1 text-xs text-slate-500">{hintFor(field.name)}</p>
       {/if}
       {#if errors[field.name]}
         <p id="error-{field.name}" class="mt-1 text-sm text-red-700">{errors[field.name]}</p>

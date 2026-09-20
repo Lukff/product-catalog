@@ -245,7 +245,7 @@ B-11 was unblocked by D-1; B-12 remains blocked on D-2.
 
 ### B-11 — Categories
 
-**Status:** In progress
+**Status:** Done
 **Depends on:** B-03, B-08
 
 API:

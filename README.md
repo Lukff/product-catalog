@@ -92,7 +92,7 @@ packages/shared Zod schemas        the single source of the product contract
 - **One error path.** `middleware/error-handler.ts` maps domain errors and Zod failures to the error envelope; no route hand-writes an error response.
 - **SPA shape.** One dashboard with a detail modal, because the catalog is a single workflow. Query state lives in a runes store (`catalog`) and is mirrored into the URL so a filtered view is shareable and the back button works. Only params that differ from the defaults are written to the URL, and an invalid link falls back to the default list. The search box is debounced by 300 ms.
 - **One modal for detail, create, edit and delete.** A native `<dialog>` gives Escape-to-close, a focus trap and focus restoration for free. A dialog store moves it between `detail`, `edit` and `delete` views. Opening a row shows the list's data at once and refreshes it in the background from `GET /api/products/:id`.
-- **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
+- **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Its category field is a select of the existing categories, read from the same store as the toolbar; edit keeps the product's current category as an option even if the list lacks it. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
 - **Categories are managed from the toolbar.** The category select is filled from `GET /api/categories` by a small `categories` store. Its "Manage" button opens a second dialog to add a category (one slug input) or remove one, with server errors shown inline. Removing the category the list is filtered by clears that filter.
 
 Why these choices (and what was rejected) is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 1.
@@ -172,7 +172,7 @@ Working today, end to end (API and web):
 - Listing products with a numbered pager (B-06), and search, sort, category filtering and page size, mirrored into the URL (B-08).
 - A detail modal, and creating a product (B-07).
 - Editing and deleting a product from the modal (B-10).
-- Listing, adding and removing categories, with the toolbar's category select filled from the API (B-11).
+- Listing, adding and removing categories, with the toolbar's category select and the product form's category select both filled from the API (B-11).
 - The shared contract with its tests, and CI.
 
 Not built yet, in backlog order (see [`docs/backlog.md`](docs/backlog.md)):
@@ -181,8 +181,8 @@ Not built yet, in backlog order (see [`docs/backlog.md`](docs/backlog.md)):
 
 Known limits of the categories slice:
 
-- The toolbar select and the manage dialog load at most 100 categories, the API's maximum page size. There is no paging in the UI.
-- The product form still takes the category as a free-text slug; a server-side check rejects an unknown one. Turning it into a dropdown fed by the same store is the natural next step.
+- The toolbar select, the product form's select and the manage dialog load at most 100 categories, the API's maximum page size. There is no paging in the UI. Editing a product whose category is missing from the list still works, because its current category is kept as an option.
+- A category cannot be created from inside the product form; add it from the toolbar's Manage dialog first.
 
 Smaller improvements found during reviews, such as a clearer message when the API is down and a visual design pass on the page, are collected in [`docs/improvement-opportunities.md`](docs/improvement-opportunities.md).
 
