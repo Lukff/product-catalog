@@ -117,3 +117,30 @@ docs, so the decisions went straight into §3.1 and §4. The model wrote the tes
 first (29 failing for the right reason), then the implementation (53 passing).
 Partway through I introduced the rule of one branch per feature with a PR at the end,
 to start testing the CI (B-22, whose workflow was written but not yet run on GitHub).
+
+## 2026-09-19 — API skeleton and category modelling (B-03)
+
+**Context:** B-01 and B-02 were merged and `apps/api` was an empty stub. This serves
+backlog item B-03 (API skeleton) and pulled in open decision D-1 (category
+modelling), because the Drizzle `products` table needs a category column whose form
+D-1 decides.
+
+**Tooling & prompts:** Claude Code on Sonnet 5, prompted with "PRs merged; start
+B-03". The model classified it as architectural and used the superpowers
+`brainstorming` skill, then `test-driven-development`. It put D-1 to me as
+multiple-choice prompts: first whether to resolve it now or keep a plain text
+column, then which of four category models.
+
+**What happened:** I chose to resolve D-1 now instead of deferring it. Of the
+models, I picked a categories table with a surrogate integer id as the foreign key,
+over the model's recommendation of using the slug as the key, for easier
+extensibility/more flexibility later. The model then built the skeleton test-first
+(88 tests): a `createApp({ db })` factory, one error middleware, a Drizzle schema
+with its migration, and ESLint rules that enforce the routes → services →
+repositories layering. Two things changed the approved design mid-build.
+`better-sqlite3` 13 would not install because it compiles from source and this
+machine has no Visual Studio C++ toolchain; the model pinned it to 12.x, which ships
+prebuilt binaries, and I kept the pin because of the limited scope over changing
+machine configurations. Separately, the pre-commit `pnpm audit` blocked the first
+commits over an `esbuild` advisory reached through `drizzle-kit`, and the model
+fixed it with a scoped pnpm override instead of bypassing the hook.
