@@ -149,6 +149,11 @@ export function createProductRepository(db: Db) {
       return db.update(products).set(changes).where(eq(products.id, id)).run().changes > 0;
     },
 
+    /** Removes the product. Returns whether a row was removed. */
+    delete(id: number): boolean {
+      return db.delete(products).where(eq(products.id, id)).run().changes > 0;
+    },
+
     /** Inserts the row and returns its new id. */
     insert(values: NewProduct): number {
       return db.insert(products).values(values).returning({ id: products.id }).get().id;

@@ -59,6 +59,7 @@ const IMPLEMENTED_OPERATIONS = new Set([
   'GET /api/products/{id}',
   'POST /api/products',
   'PATCH /api/products/{id}',
+  'DELETE /api/products/{id}',
 ]);
 
 let testDb: TestDb;
@@ -429,16 +430,13 @@ describe('implementation status', () => {
 
   it('flips an operation on as soon as its route is registered, and only that one', async () => {
     const app = newApp();
-    app.patch('/api/products/:id', (c) => c.json({ data: null }));
     app.get('/api/categories', (c) => c.json({ data: [] }));
 
     const ops = operations(await fetchDoc(app));
 
-    expect(ops.get('PATCH /api/products/{id}')?.['x-implemented']).toBe(true);
-    expect(ops.get('PATCH /api/products/{id}')?.description).not.toMatch(/Not implemented yet/);
     expect(ops.get('GET /api/categories')?.['x-implemented']).toBe(true);
+    expect(ops.get('GET /api/categories')?.description).not.toMatch(/Not implemented yet/);
     expect(ops.get('POST /api/categories')?.['x-implemented']).toBe(false);
-    expect(ops.get('DELETE /api/products/{id}')?.['x-implemented']).toBe(false);
   });
 });
 

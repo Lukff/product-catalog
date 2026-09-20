@@ -30,5 +30,11 @@ export function productRoutes(service: ProductService) {
     return c.json({ data: service.update(id, patch) });
   });
 
+  routes.delete('/:id', (c) => {
+    const { id } = productIdParamSchema.parse(c.req.param());
+    service.delete(id);
+    return c.body(null, 204);
+  });
+
   return routes;
 }

@@ -80,6 +80,10 @@ export function createProductService(
       return get(id);
     },
 
+    delete(id: number): void {
+      if (!repository.delete(id)) throw new NotFoundError(`Product ${id} not found`);
+    },
+
     list({ page, pageSize, q, category, sort }: ListQuery): { data: Product[]; meta: PageMeta } {
       const { rows, total } = repository.list({
         limit: pageSize,
