@@ -390,7 +390,7 @@ Web:
 
 ### B-13 — CI workflow
 
-**Status:** In progress — workflow written, not yet run on GitHub
+**Status:** Done — runs on every push and is green on `main`; per-item PRs were dropped, so it gates pushes rather than PRs
 **Depends on:** B-01
 
 - `.github/workflows/ci.yml` runs on push and pull request.
