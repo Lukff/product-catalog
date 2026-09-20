@@ -54,7 +54,7 @@ const EXPECTED_STATUSES: Record<string, string[]> = {
 };
 
 /** Operations whose route exists in the real app. Add each one here as its backlog item lands. */
-const IMPLEMENTED_OPERATIONS = new Set(['GET /api/products']);
+const IMPLEMENTED_OPERATIONS = new Set(['GET /api/products', 'GET /api/products/{id}']);
 
 let testDb: TestDb;
 

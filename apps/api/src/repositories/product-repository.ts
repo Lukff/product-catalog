@@ -68,8 +68,32 @@ function whereClause({ q, category }: Pick<ListOptions, 'q' | 'category'>): SQL 
   return and(...conditions);
 }
 
+const productColumns = {
+  id: products.id,
+  title: products.title,
+  description: products.description,
+  category: categories.slug,
+  price: products.price,
+  stock: products.stock,
+  brand: products.brand,
+  sku: products.sku,
+  weight: products.weight,
+  createdAt: products.createdAt,
+  updatedAt: products.updatedAt,
+};
+
 export function createProductRepository(db: Db) {
   return {
+    /** One product with its category slug resolved, or `undefined` when the id does not exist. */
+    findById(id: number): ProductRecord | undefined {
+      return db
+        .select(productColumns)
+        .from(products)
+        .innerJoin(categories, eq(products.categoryId, categories.id))
+        .where(eq(products.id, id))
+        .get();
+    },
+
     /** One page of the products matching the filters, plus the total number of matches. */
     list({ limit, offset, q, category, sort }: ListOptions): ProductPage {
       const where = whereClause({ q, category });
@@ -78,19 +102,7 @@ export function createProductRepository(db: Db) {
         : [asc(products.id)];
 
       const rows = db
-        .select({
-          id: products.id,
-          title: products.title,
-          description: products.description,
-          category: categories.slug,
-          price: products.price,
-          stock: products.stock,
-          brand: products.brand,
-          sku: products.sku,
-          weight: products.weight,
-          createdAt: products.createdAt,
-          updatedAt: products.updatedAt,
-        })
+        .select(productColumns)
         .from(products)
         .innerJoin(categories, eq(products.categoryId, categories.id))
         .where(where)
