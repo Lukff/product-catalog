@@ -11,6 +11,70 @@ export default tseslint.config(
     languageOptions: {
       globals: { ...globals.node },
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  // API layering: routes -> services -> repositories (docs/technical-decisions.md §2).
+  {
+    files: ['apps/api/src/routes/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['drizzle-orm', 'drizzle-orm/*', 'better-sqlite3', '**/db/**'],
+              message: 'Routes never touch the database or Drizzle; call a service.',
+            },
+            {
+              group: ['**/repositories/**'],
+              message: 'Routes must not skip the service layer; call a service.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/api/src/services/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['hono', 'hono/*', '@hono/*', '**/routes/**', '**/middleware/**'],
+              message: 'Services are HTTP-agnostic; they throw AppErrors instead.',
+            },
+            {
+              group: ['drizzle-orm', 'drizzle-orm/*', 'better-sqlite3', '**/db/**'],
+              message: 'Services never touch Drizzle; call a repository.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/api/src/repositories/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['hono', 'hono/*', '@hono/*', '**/errors', '**/errors.js', '**/middleware/**'],
+              message: 'Repositories never throw HTTP errors; let the service translate.',
+            },
+            {
+              group: ['**/routes/**', '**/services/**'],
+              message: 'Repositories sit at the bottom of the stack and import no upper layer.',
+            },
+          ],
+        },
+      ],
+    },
   },
   prettier,
 );
