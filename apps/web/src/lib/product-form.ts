@@ -126,7 +126,7 @@ export function brandOptions(names: readonly string[], original: string): string
 
 /**
  * The hint shown under a select whose list is not usable: it failed to load, or is empty. `noun` is
- * the plural ("categories", "brands"); the empty hint points at the toolbar's Manage button.
+ * the plural ("categories", "brands"); the empty hint points at the select's own "Add new…" option.
  */
 export function optionsHint(
   status: 'loading' | 'ready' | 'error',
@@ -134,7 +134,6 @@ export function optionsHint(
   noun: string,
 ): string {
   if (status === 'error') return `Could not load the ${noun}.`;
-  if (status === 'ready' && count === 0)
-    return `No ${noun} yet. Add one with Manage in the toolbar.`;
+  if (status === 'ready' && count === 0) return `No ${noun} yet. Choose "Add new…" to create one.`;
   return '';
 }

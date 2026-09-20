@@ -97,7 +97,7 @@ packages/shared Zod schemas        the single source of the product contract
 - **SPA shape.** One dashboard with a detail modal, because the catalog is a single workflow. Query state lives in a runes store (`catalog`) and is mirrored into the URL so a filtered view is shareable and the back button works. Only params that differ from the defaults are written to the URL, and an invalid link falls back to the default list. The search box is debounced by 300 ms.
 - **One modal for detail, create, edit and delete.** A native `<dialog>` gives Escape-to-close, a focus trap and focus restoration for free. A dialog store moves it between `detail`, `edit` and `delete` views. Opening a row shows the list's data at once and refreshes it in the background from `GET /api/products/:id`.
 - **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Its category field is a select of the existing categories, read from the same store as the toolbar; edit keeps the product's current category as an option even if the list lacks it. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
-- **Brands work the same way.** The toolbar has a brand select and its own "Manage" dialog, backed by a `brands` store, and the product form's brand field is a select of existing brands (placeholder on create, current brand kept on edit, a hint when there are none). The brand filter is mirrored into the URL as `?brand=`.
+- **Brands work the same way.** The toolbar has a brand select and its own "Manage" dialog, backed by a `brands` store, and the product form's brand field is a select of existing brands (placeholder on create, current brand kept on edit, a hint when there are none, and an inline "Add new brand…" option). The brand filter is mirrored into the URL as `?brand=`.
 - **Categories are managed from the toolbar.** The category select is filled from `GET /api/categories` by a small `categories` store. Its "Manage" button opens a second dialog to add a category (one slug input) or remove one, with server errors shown inline. Removing the category the list is filtered by clears that filter.
 
 Why these choices (and what was rejected) is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 1.
@@ -184,7 +184,7 @@ Working today, end to end (API and web):
 - A detail modal, and creating a product (B-07).
 - Editing and deleting a product from the modal (B-10).
 - Listing, adding and removing categories, with the toolbar's category select and the product form's category select both filled from the API (B-11).
-- Brands as their own table: listing, adding and removing them, a toolbar brand filter mirrored into the URL, and a brand select in the product form (B-17).
+- Brands as their own table: listing, adding and removing them, a toolbar brand filter mirrored into the URL, and a brand select in the product form (B-17). Both selects in the form can create a new category or brand inline (B-18).
 - The custom feature: the metric strip, the Low stock and Out of stock filter tiles and `GET /api/products/stats` (B-12).
 - The shared contract with its tests, and CI.
 
@@ -193,7 +193,7 @@ Everything in the backlog's product phases is built (see [`docs/backlog.md`](doc
 Known limits of the categories slice:
 
 - The toolbar select, the product form's select and the manage dialog load at most 100 categories, the API's maximum page size. There is no paging in the UI. Editing a product whose category is missing from the list still works, because its current category is kept as an option.
-- A category cannot be created from inside the product form; add it from the toolbar's Manage dialog first. The same is true of brands. Creating either inline is planned as B-18.
+- The product form's category and brand selects end with "Add new…", which creates the entry through the same endpoints as the Manage dialogs and selects it. A duplicate is caught inline with a "Use it" shortcut. If the product itself then fails to save, the new category or brand is kept, since it is a valid entry in its own right. Escape closes the inline input first and the modal only on the next press.
 - Brand names are unique exactly as typed, so "ACME" and "Acme" would be two brands. Case-insensitive uniqueness would need a `COLLATE NOCASE` index in a later migration.
 
 Smaller improvements found during reviews, such as a clearer message when the API is down and a visual design pass on the page, are collected in [`docs/improvement-opportunities.md`](docs/improvement-opportunities.md).

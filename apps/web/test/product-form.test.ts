@@ -222,9 +222,9 @@ describe('optionsHint', () => {
     expect(optionsHint('error', 0, 'brands')).toBe('Could not load the brands.');
   });
 
-  it('points at the toolbar when the loaded list is empty', () => {
+  it('points at the "Add new…" option when the loaded list is empty', () => {
     expect(optionsHint('ready', 0, 'brands')).toBe(
-      'No brands yet. Add one with Manage in the toolbar.',
+      'No brands yet. Choose "Add new…" to create one.',
     );
     expect(optionsHint('ready', 0, 'categories')).toMatch(/^No categories yet/);
   });
