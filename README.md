@@ -2,7 +2,7 @@
 
 A full-stack product catalog: a Svelte 5 single-page app on top of a Hono + SQLite JSON API, in a pnpm TypeScript monorepo.
 
-> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete products, and add and remove categories, plus low-stock alerts with inventory metrics as the custom feature. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
+> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete products, and add and remove categories and brands, plus low-stock alerts with inventory metrics as the custom feature. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
 
 ## Requirements
 
@@ -66,7 +66,7 @@ Base path `/api`, JSON only. Responses are wrapped: `{ "data": ... }`, plus `met
 
 | Method | Path                | Notes                                                                                                         |
 | ------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/products`     | Paginated. Query: `page`, `pageSize` (default 30, max 100), `q`, `category`, `stockStatus` (`out`, `low` or `in`), `sort` (for example `-price`).    |
+| GET    | `/api/products`     | Paginated. Query: `page`, `pageSize` (default 30, max 100), `q`, `category`, `brand`, `stockStatus` (`out`, `low` or `in`), `sort` (for example `-price`).    |
 | GET    | `/api/products/stats` | Catalog-wide counts by stock status and the inventory value (`price * stock`).                              |
 | GET    | `/api/products/:id` | `404` if absent; a non-numeric id is a `400`.                                                                 |
 | POST   | `/api/products`     | Server assigns `id` and timestamps. `201`.                                                                    |
@@ -75,6 +75,9 @@ Base path `/api`, JSON only. Responses are wrapped: `{ "data": ... }`, plus `met
 | GET    | `/api/categories`   | Paginated, same envelope, ordered by slug. Each item is `{ "slug" }`.                                         |
 | POST   | `/api/categories`   | Creates a category from its slug. `201`; `409` on a duplicate.                                                |
 | DELETE | `/api/categories/:slug` | `204`; `404` if absent; `409` while any product still uses it.                                            |
+| GET    | `/api/brands`       | Paginated, same envelope, ordered by name. Each item is `{ "name" }`.                                         |
+| POST   | `/api/brands`       | Creates a brand from its name. `201`; `409` on a duplicate.                                                   |
+| DELETE | `/api/brands/:name` | `204`; `404` if absent; `409` while any product still uses it. The name is URL-encoded.                       |
 
 Errors share one shape, `{ "error": { "code", "message", "details" } }`, with codes `VALIDATION_ERROR` (400), `NOT_FOUND` (404), `CONFLICT` (409) and `INTERNAL_ERROR` (500). The full contract is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 3.
 
@@ -94,6 +97,7 @@ packages/shared Zod schemas        the single source of the product contract
 - **SPA shape.** One dashboard with a detail modal, because the catalog is a single workflow. Query state lives in a runes store (`catalog`) and is mirrored into the URL so a filtered view is shareable and the back button works. Only params that differ from the defaults are written to the URL, and an invalid link falls back to the default list. The search box is debounced by 300 ms.
 - **One modal for detail, create, edit and delete.** A native `<dialog>` gives Escape-to-close, a focus trap and focus restoration for free. A dialog store moves it between `detail`, `edit` and `delete` views. Opening a row shows the list's data at once and refreshes it in the background from `GET /api/products/:id`.
 - **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Its category field is a select of the existing categories, read from the same store as the toolbar; edit keeps the product's current category as an option even if the list lacks it. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
+- **Brands work the same way.** The toolbar has a brand select and its own "Manage" dialog, backed by a `brands` store, and the product form's brand field is a select of existing brands (placeholder on create, current brand kept on edit, a hint when there are none). The brand filter is mirrored into the URL as `?brand=`.
 - **Categories are managed from the toolbar.** The category select is filled from `GET /api/categories` by a small `categories` store. Its "Manage" button opens a second dialog to add a category (one slug input) or remove one, with server errors shown inline. Removing the category the list is filtered by clears that filter.
 
 Why these choices (and what was rejected) is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 1.
@@ -128,28 +132,29 @@ Product fields mirror the brief's payload, so the seed data loads unchanged.
 | `category`       | string (slug)   | Required; must match an existing category |
 | `price`          | number          | `>= 0`, at most 2 decimals; never rounded |
 | `stock`          | integer         | `>= 0`                                    |
-| `brand`          | string          | Required, trimmed, up to 100 characters   |
+| `brand`          | string (name)   | Required; must match an existing brand    |
 | `sku`            | string          | Required, trimmed, up to 64, **unique**   |
 | `weight`         | number          | `> 0`                                     |
 | `meta.createdAt` | ISO 8601 string | Server-owned                              |
 | `meta.updatedAt` | ISO 8601 string | Server-owned; refreshed on every PATCH    |
 
 - **Categories are a table**, `categories(id, slug UNIQUE)`, and `products.category_id` is a foreign key with `ON DELETE RESTRICT`. This makes create, list and filter honest and prevents typo'd categories. A product write with an unknown slug is a `400` naming `category`; a category is never created implicitly. SQLite ignores foreign keys unless `PRAGMA foreign_keys = ON`, which `createDb()` sets on every connection.
-- **Storage differs from the wire shape.** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested at the route boundary; `category_id` is resolved to a slug on the way out and back on the way in. The surrogate key is never exposed.
+- **Brands are a table too**, `brands(id, name UNIQUE)`, with `products.brand_id` a foreign key with `ON DELETE RESTRICT`. A brand is identified by its name (not a slug), 1-100 characters and no `/` because it travels in a URL path. An unknown brand on a product write is a `400` naming `brand`, and a brand is never created implicitly. The migration backfills `brands` from the distinct `brand` text already in `products`, so an existing database keeps its data.
+- **Storage differs from the wire shape.** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested at the route boundary; `category_id` and `brand_id` are resolved to a slug and a name on the way out and back on the way in. The surrogate keys are never exposed.
 - **Server-owned fields are stripped**, not rejected: a client-sent `id` or `meta` is ignored.
 - **Migrations** are generated by `pnpm --filter @catalog/api db:generate` from `apps/api/src/db/schema.ts` into `apps/api/src/db/migrations/`, which is committed.
 
 ### Seeding
 
-`pnpm db:seed` loads 36 ACME-style products from `apps/api/src/db/seed.json` across 6 categories and 5 fictional brands, including 5 out-of-stock and 7 low-stock products so filters and metrics have data. Rows 1 and 2 are the brief's own samples. Every row is validated with the shared `productSchema` before insert, so bad seed data fails loudly.
+`pnpm db:seed` loads 36 ACME-style products from `apps/api/src/db/seed.json` across 6 categories and 5 fictional brands (each created as a row before the products that use it), including 5 out-of-stock and 7 low-stock products so filters and metrics have data. Rows 1 and 2 are the brief's own samples. Every row is validated with the shared `productSchema` before insert, so bad seed data fails loudly.
 
 Seeding runs in one transaction and uses `ON CONFLICT DO NOTHING`. Re-running does not change row counts, never overwrites an edit you made to a seeded product, and restores a seeded row you deleted. The consequence is that editing `seed.json` later does not update existing rows; reset the database to pick up changes.
 
 ## Testing and CI
 
 - **Vitest** throughout, run from the root as one project per workspace package. The web project loads the Svelte plugin so runes in `*.svelte.ts` modules compile under test.
-- **API integration tests** run the real Hono app with `app.request()` against a throwaway SQLite file per suite, covering list, detail, create, update, delete, the query parameters and the categories endpoints.
-- **Unit tests** cover the shared schemas and stock helper, and on the web side the catalog, dialog and categories stores, query-param and form helpers, and the API wrapper.
+- **API integration tests** run the real Hono app with `app.request()` against a throwaway SQLite file per suite, covering list, detail, create, update, delete, the query parameters and the categories and brands endpoints. A database test applies the brands migration to a database that holds legacy rows.
+- **Unit tests** cover the shared schemas and stock helper, and on the web side the catalog, dialog, categories and brands stores, query-param and form helpers, and the API wrapper.
 - **CI** (`.github/workflows/ci.yml`, on push and pull request): `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm audit`.
 - **Pre-commit hook** (`.husky/pre-commit`) runs `pnpm audit`. It needs network access, so a commit made offline fails; use `git commit --no-verify` only when offline, since CI still enforces the audit.
 
@@ -179,6 +184,7 @@ Working today, end to end (API and web):
 - A detail modal, and creating a product (B-07).
 - Editing and deleting a product from the modal (B-10).
 - Listing, adding and removing categories, with the toolbar's category select and the product form's category select both filled from the API (B-11).
+- Brands as their own table: listing, adding and removing them, a toolbar brand filter mirrored into the URL, and a brand select in the product form (B-17).
 - The custom feature: the metric strip, the Low stock and Out of stock filter tiles and `GET /api/products/stats` (B-12).
 - The shared contract with its tests, and CI.
 
@@ -187,7 +193,8 @@ Everything in the backlog's product phases is built (see [`docs/backlog.md`](doc
 Known limits of the categories slice:
 
 - The toolbar select, the product form's select and the manage dialog load at most 100 categories, the API's maximum page size. There is no paging in the UI. Editing a product whose category is missing from the list still works, because its current category is kept as an option.
-- A category cannot be created from inside the product form; add it from the toolbar's Manage dialog first.
+- A category cannot be created from inside the product form; add it from the toolbar's Manage dialog first. The same is true of brands. Creating either inline is planned as B-18.
+- Brand names are unique exactly as typed, so "ACME" and "Acme" would be two brands. Case-insensitive uniqueness would need a `COLLATE NOCASE` index in a later migration.
 
 Smaller improvements found during reviews, such as a clearer message when the API is down and a visual design pass on the page, are collected in [`docs/improvement-opportunities.md`](docs/improvement-opportunities.md).
 

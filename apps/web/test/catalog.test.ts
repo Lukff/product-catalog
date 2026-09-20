@@ -182,6 +182,18 @@ describe('CatalogStore', () => {
     );
   });
 
+  it('sends the brand param, URL-encoded, and resets to page 1 when it changes', async () => {
+    const fetchMock = vi.fn(async (_url: string) => json(page([product(1)])));
+    vi.stubGlobal('fetch', fetchMock);
+    const store = new CatalogStore();
+    await store.update({ page: 3 });
+
+    await store.update({ brand: 'Acme Corp' });
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/products?page=1&pageSize=30&brand=Acme+Corp');
+    expect(store.params.page).toBe(1);
+  });
+
   it('sends the stockStatus param when it is set', async () => {
     const fetchMock = vi.fn(async (_url: string) => json(page([product(1)])));
     vi.stubGlobal('fetch', fetchMock);
@@ -287,6 +299,7 @@ describe('CatalogStore', () => {
       pageSize: 10,
       q: 'a',
       category: '',
+      brand: '',
       stockStatus: 'low',
       sort: '',
     } as const;

@@ -53,6 +53,7 @@ export function validateProductForm(values: ProductFormValues): FormResult {
   const raw: Record<string, unknown> = { ...values };
 
   if (values.category.trim() === '') errors.category = 'is required';
+  if (values.brand.trim() === '') errors.brand = 'is required';
   for (const field of NUMERIC_FIELDS) {
     const text = values[field].trim();
     if (text === '') errors[field] = 'is required';
@@ -116,4 +117,24 @@ export function changedFields(original: Product, input: CreateProductInput): Pat
  */
 export function categoryOptions(slugs: readonly string[], original: string): string[] {
   return original !== '' && !slugs.includes(original) ? [original, ...slugs] : [...slugs];
+}
+
+/** The names the brand select offers, with the same keep-the-original rule as the categories. */
+export function brandOptions(names: readonly string[], original: string): string[] {
+  return categoryOptions(names, original);
+}
+
+/**
+ * The hint shown under a select whose list is not usable: it failed to load, or is empty. `noun` is
+ * the plural ("categories", "brands"); the empty hint points at the toolbar's Manage button.
+ */
+export function optionsHint(
+  status: 'loading' | 'ready' | 'error',
+  count: number,
+  noun: string,
+): string {
+  if (status === 'error') return `Could not load the ${noun}.`;
+  if (status === 'ready' && count === 0)
+    return `No ${noun} yet. Add one with Manage in the toolbar.`;
+  return '';
 }

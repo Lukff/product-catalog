@@ -1,22 +1,27 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDb } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
-import { categories, products } from '../src/db/schema.js';
+import { brands, categories, products } from '../src/db/schema.js';
 import { createTestDb, type TestDb } from './helpers.js';
 
 const NOW = '2026-09-19T10:00:00.000Z';
 
-function productRow(categoryId: number, overrides: Partial<typeof products.$inferInsert> = {}) {
+function productRow(
+  categoryId: number,
+  brandId: number,
+  overrides: Partial<typeof products.$inferInsert> = {},
+) {
   return {
     title: 'Large Flux Capacitor',
     description: 'Provides the maximum motive force.',
     categoryId,
     price: 9.99,
     stock: 42,
-    brand: 'ACME',
+    brandId,
     sku: 'ACM-FC-001',
     weight: 4,
     createdAt: NOW,
@@ -57,6 +62,12 @@ describe('schema and migrations', () => {
   beforeEach(() => {
     testDb.db.delete(products).run();
     testDb.db.delete(categories).run();
+    testDb.db.delete(brands).run();
+  });
+
+  const insertParents = () => ({
+    category: testDb.db.insert(categories).values({ slug: 'automotive' }).returning().get(),
+    brand: testDb.db.insert(brands).values({ name: 'ACME' }).returning().get(),
   });
 
   const columns = (table: string) =>
@@ -64,8 +75,9 @@ describe('schema and migrations', () => {
       (column) => column.name,
     );
 
-  it('creates the categories and products tables', () => {
+  it('creates the categories, brands and products tables', () => {
     expect(columns('categories')).toEqual(expect.arrayContaining(['id', 'slug']));
+    expect(columns('brands')).toEqual(expect.arrayContaining(['id', 'name']));
     expect(columns('products')).toEqual(
       expect.arrayContaining([
         'id',
@@ -74,7 +86,7 @@ describe('schema and migrations', () => {
         'category_id',
         'price',
         'stock',
-        'brand',
+        'brand_id',
         'sku',
         'weight',
         'created_at',
@@ -83,11 +95,12 @@ describe('schema and migrations', () => {
     );
   });
 
-  it('stores timestamps flat and the category as a foreign key, per the data model', () => {
+  it('stores timestamps flat and the category and brand as foreign keys, per the data model', () => {
     const names = columns('products');
 
     expect(names).not.toContain('meta');
     expect(names).not.toContain('category');
+    expect(names).not.toContain('brand');
   });
 
   it('can be applied twice without error', () => {
@@ -95,12 +108,17 @@ describe('schema and migrations', () => {
   });
 
   it('round-trips a product through the drizzle schema', () => {
-    const category = testDb.db.insert(categories).values({ slug: 'automotive' }).returning().get();
-    const product = testDb.db.insert(products).values(productRow(category.id)).returning().get();
+    const { category, brand } = insertParents();
+    const product = testDb.db
+      .insert(products)
+      .values(productRow(category.id, brand.id))
+      .returning()
+      .get();
 
     expect(product).toMatchObject({
       id: expect.any(Number),
       categoryId: category.id,
+      brandId: brand.id,
       price: 9.99,
       sku: 'ACM-FC-001',
       createdAt: NOW,
@@ -109,12 +127,16 @@ describe('schema and migrations', () => {
   });
 
   it('assigns increasing integer ids that are not reused after a delete', () => {
-    const category = testDb.db.insert(categories).values({ slug: 'automotive' }).returning().get();
-    const first = testDb.db.insert(products).values(productRow(category.id)).returning().get();
+    const { category, brand } = insertParents();
+    const first = testDb.db
+      .insert(products)
+      .values(productRow(category.id, brand.id))
+      .returning()
+      .get();
     testDb.db.delete(products).run();
     const second = testDb.db
       .insert(products)
-      .values(productRow(category.id, { sku: 'ACM-FC-002' }))
+      .values(productRow(category.id, brand.id, { sku: 'ACM-FC-002' }))
       .returning()
       .get();
 
@@ -122,11 +144,11 @@ describe('schema and migrations', () => {
   });
 
   it('rejects a second product with the same sku', () => {
-    const category = testDb.db.insert(categories).values({ slug: 'automotive' }).returning().get();
-    testDb.db.insert(products).values(productRow(category.id)).run();
+    const { category, brand } = insertParents();
+    testDb.db.insert(products).values(productRow(category.id, brand.id)).run();
 
     const error = captureError(() =>
-      testDb.db.insert(products).values(productRow(category.id)).run(),
+      testDb.db.insert(products).values(productRow(category.id, brand.id)).run(),
     );
 
     expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_UNIQUE');
@@ -142,15 +164,45 @@ describe('schema and migrations', () => {
     expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_UNIQUE');
   });
 
+  it('rejects a duplicate brand name', () => {
+    testDb.db.insert(brands).values({ name: 'ACME' }).run();
+
+    const error = captureError(() => testDb.db.insert(brands).values({ name: 'ACME' }).run());
+
+    expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_UNIQUE');
+  });
+
   it('rejects a product whose category does not exist', () => {
-    const error = captureError(() => testDb.db.insert(products).values(productRow(999)).run());
+    const { brand } = insertParents();
+    const error = captureError(() =>
+      testDb.db.insert(products).values(productRow(999, brand.id)).run(),
+    );
 
     expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_FOREIGNKEY');
   });
 
+  it('rejects a product whose brand does not exist', () => {
+    const { category } = insertParents();
+    const error = captureError(() =>
+      testDb.db.insert(products).values(productRow(category.id, 999)).run(),
+    );
+
+    expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_FOREIGNKEY');
+  });
+
+  it('refuses to delete a brand that still has products', () => {
+    const { category, brand } = insertParents();
+    testDb.db.insert(products).values(productRow(category.id, brand.id)).run();
+
+    const error = captureError(() => testDb.db.delete(brands).run());
+
+    expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_TRIGGER');
+    expect(testDb.db.select().from(brands).all()).toHaveLength(1);
+  });
+
   it('refuses to delete a category that still has products', () => {
-    const category = testDb.db.insert(categories).values({ slug: 'automotive' }).returning().get();
-    testDb.db.insert(products).values(productRow(category.id)).run();
+    const { category, brand } = insertParents();
+    testDb.db.insert(products).values(productRow(category.id, brand.id)).run();
 
     const error = captureError(() => testDb.db.delete(categories).run());
 
@@ -161,8 +213,8 @@ describe('schema and migrations', () => {
   });
 
   it('requires every product field', () => {
-    const category = testDb.db.insert(categories).values({ slug: 'automotive' }).returning().get();
-    const incomplete = { ...productRow(category.id), title: undefined } as unknown;
+    const { category, brand } = insertParents();
+    const incomplete = { ...productRow(category.id, brand.id), title: undefined } as unknown;
 
     const error = captureError(() =>
       testDb.db
@@ -172,6 +224,57 @@ describe('schema and migrations', () => {
     );
 
     expect(sqliteCode(error)).toBe('SQLITE_CONSTRAINT_NOTNULL');
+  });
+});
+
+describe('brands migration', () => {
+  const migrationSql = (file: string) =>
+    readFileSync(fileURLToPath(new URL(`../src/db/migrations/${file}`, import.meta.url)), 'utf8')
+      .split('--> statement-breakpoint')
+      .map((statement) => statement.trim())
+      .filter(Boolean);
+
+  it('moves each distinct brand text into brands and re-points existing products at it', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'catalog-test-'));
+
+    try {
+      const db = createDb(join(dir, 'legacy.db'));
+      const run = (sql: string) => db.$client.exec(sql);
+      migrationSql('0000_melted_sir_ram.sql').forEach(run);
+      run("INSERT INTO categories (slug) VALUES ('automotive')");
+      const legacyProduct = (id: number, sku: string, brand: string) =>
+        run(
+          `INSERT INTO products (id, title, description, category_id, price, stock, brand, sku, weight, created_at, updated_at)
+           VALUES (${id}, 'Item ${id}', 'Old row.', 1, 2.5, 7, '${brand}', '${sku}', 1, '${NOW}', '${NOW}')`,
+        );
+      legacyProduct(1, 'A-1', 'ACME');
+      legacyProduct(2, 'G-1', 'Globex');
+      legacyProduct(3, 'A-2', 'ACME');
+
+      migrationSql('0001_brands.sql').forEach(run);
+
+      const stored = db.$client
+        .prepare(
+          'SELECT p.id, p.sku, p.stock, b.name FROM products p JOIN brands b ON b.id = p.brand_id ORDER BY p.id',
+        )
+        .all();
+      expect(stored).toEqual([
+        { id: 1, sku: 'A-1', stock: 7, name: 'ACME' },
+        { id: 2, sku: 'G-1', stock: 7, name: 'Globex' },
+        { id: 3, sku: 'A-2', stock: 7, name: 'ACME' },
+      ]);
+      expect(
+        db
+          .select()
+          .from(brands)
+          .all()
+          .map((brand) => brand.name),
+      ).toEqual(['ACME', 'Globex']);
+      expect(db.$client.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+      db.$client.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

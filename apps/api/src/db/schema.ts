@@ -5,6 +5,11 @@ export const categories = sqliteTable('categories', {
   slug: text('slug').notNull().unique(),
 });
 
+export const brands = sqliteTable('brands', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+});
+
 export const products = sqliteTable(
   'products',
   {
@@ -17,7 +22,10 @@ export const products = sqliteTable(
       .references(() => categories.id, { onDelete: 'restrict' }),
     price: real('price').notNull(),
     stock: integer('stock').notNull(),
-    brand: text('brand').notNull(),
+    // The wire contract exposes the brand's name; storage is a foreign key.
+    brandId: integer('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'restrict' }),
     sku: text('sku').notNull(),
     weight: real('weight').notNull(),
     // `meta.createdAt` / `meta.updatedAt` on the wire; ISO 8601 text, set by the service.
@@ -27,5 +35,6 @@ export const products = sqliteTable(
   (table) => [uniqueIndex('products_sku_unique').on(table.sku)],
 );
 
+export type BrandRow = typeof brands.$inferSelect;
 export type CategoryRow = typeof categories.$inferSelect;
 export type ProductRow = typeof products.$inferSelect;

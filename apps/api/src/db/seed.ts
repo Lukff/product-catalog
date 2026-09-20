@@ -2,13 +2,14 @@ import { productSchema, zodIssuesToDetails, type Product } from '@catalog/shared
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Db } from './client.js';
-import { categories, products } from './schema.js';
+import { brands, categories, products } from './schema.js';
 
 const seedFile = fileURLToPath(new URL('./seed.json', import.meta.url));
 
 export interface SeedResult {
   /** Rows actually inserted; anything already present is not counted. */
   categories: number;
+  brands: number;
   products: number;
 }
 
@@ -33,7 +34,7 @@ export function loadSeedData(): Product[] {
 }
 
 /**
- * Inserts the categories the products use, then the products with their seed ids
+ * Inserts the categories and brands the products use, then the products with their seed ids
  * and timestamps. Rows that already exist (by id, sku or slug) are left untouched,
  * so it is safe to run repeatedly: it never overwrites an edit, and it restores a
  * seed row that was deleted.
@@ -58,9 +59,29 @@ export function seedDatabase(db: Db, data: Product[]): SeedResult {
         .map((row) => [row.slug, row.id]),
     );
 
+    const names = [...new Set(data.map((product) => product.brand))];
+    const insertedBrands = names.length
+      ? tx
+          .insert(brands)
+          .values(names.map((name) => ({ name })))
+          .onConflictDoNothing()
+          .returning()
+          .all().length
+      : 0;
+
+    const idByName = new Map(
+      tx
+        .select()
+        .from(brands)
+        .all()
+        .map((row) => [row.name, row.id]),
+    );
+
     const rows = data.map((product) => {
       const categoryId = idBySlug.get(product.category);
       if (categoryId === undefined) throw new Error(`No category for slug "${product.category}"`);
+      const brandId = idByName.get(product.brand);
+      if (brandId === undefined) throw new Error(`No brand named "${product.brand}"`);
 
       return {
         id: product.id,
@@ -69,7 +90,7 @@ export function seedDatabase(db: Db, data: Product[]): SeedResult {
         categoryId,
         price: product.price,
         stock: product.stock,
-        brand: product.brand,
+        brandId,
         sku: product.sku,
         weight: product.weight,
         createdAt: product.meta.createdAt,
@@ -80,6 +101,6 @@ export function seedDatabase(db: Db, data: Product[]): SeedResult {
       ? tx.insert(products).values(rows).onConflictDoNothing().returning().all().length
       : 0;
 
-    return { categories: insertedCategories, products: insertedProducts };
+    return { categories: insertedCategories, brands: insertedBrands, products: insertedProducts };
   });
 }

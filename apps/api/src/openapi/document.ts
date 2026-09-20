@@ -1,8 +1,11 @@
 import {
   ERROR_CODES,
   LOW_STOCK_THRESHOLD,
+  brandNameParamSchema,
+  brandSchema,
   categorySchema,
   categorySlugParamSchema,
+  createBrandSchema,
   createCategorySchema,
   createProductSchema,
   listQuerySchema,
@@ -62,6 +65,8 @@ const SUCCESS_EXAMPLES: Record<string, unknown> = {
   },
   CategoryResponse: { data: { slug: 'automotive' } },
   CategoryList: { data: [{ slug: 'automotive' }, { slug: 'kitchen' }], meta: pageMeta(2) },
+  BrandResponse: { data: { name: 'ACME' } },
+  BrandList: { data: [{ name: 'ACME' }, { name: 'Globex' }], meta: pageMeta(2) },
 };
 
 /** `{ data: T }` and `{ data: T[], meta }` envelopes from §3.1. */
@@ -84,6 +89,8 @@ function componentSchemas(): Record<string, Schema> {
     ProductStats: jsonSchema(productStatsSchema, 'output'),
     Category: jsonSchema(categorySchema, 'output'),
     CreateCategory: jsonSchema(createCategorySchema, 'input'),
+    Brand: jsonSchema(brandSchema, 'output'),
+    CreateBrand: jsonSchema(createBrandSchema, 'input'),
     PageMeta: {
       type: 'object',
       description: '`total` is counted after filters and before pagination.',
@@ -100,6 +107,8 @@ function componentSchemas(): Record<string, Schema> {
     ProductStatsResponse: item('ProductStats'),
     CategoryResponse: item('Category'),
     CategoryList: list('Category'),
+    BrandResponse: item('Brand'),
+    BrandList: list('Brand'),
     Error: {
       type: 'object',
       properties: {
@@ -134,9 +143,9 @@ function componentSchemas(): Record<string, Schema> {
 
 const ERROR_RESPONSES = {
   '400': 'Validation failed (`VALIDATION_ERROR`). `details` lists every failing field.',
-  '404': 'No such product or category (`NOT_FOUND`).',
+  '404': 'No such product, category or brand (`NOT_FOUND`).',
   '409':
-    'Conflict (`CONFLICT`), such as a duplicate `sku` or category slug, or a category still in use.',
+    'Conflict (`CONFLICT`), such as a duplicate `sku`, category slug or brand name, or a category or brand still in use.',
   '500':
     'Unexpected error (`INTERNAL_ERROR`). The message is generic; the cause is logged server-side.',
 } as const;
@@ -177,7 +186,7 @@ const validationError = (path: string, message: string): ErrorExample => ({
 interface OperationSpec {
   method: 'get' | 'post' | 'patch' | 'delete';
   path: string;
-  tag: 'Products' | 'Categories';
+  tag: 'Products' | 'Categories' | 'Brands';
   summary: string;
   description: string;
   parameters?: unknown[];
@@ -211,6 +220,13 @@ function operationSpecs(): OperationSpec[] {
     schema: (jsonSchema(categorySlugParamSchema, 'input').properties as Record<string, Schema>)
       .slug,
   };
+  const nameParam = {
+    name: 'name',
+    in: 'path',
+    required: true,
+    description: 'Brand name, URL-encoded.',
+    schema: (jsonSchema(brandNameParamSchema, 'input').properties as Record<string, Schema>).name,
+  };
   const pageParams = [
     queryParam('page', '1-based page number.'),
     queryParam('pageSize', 'Items per page. Values above the maximum are rejected, not clamped.'),
@@ -223,13 +239,14 @@ function operationSpecs(): OperationSpec[] {
       tag: 'Products',
       summary: 'List products',
       description:
-        'A page of products. Search, category filter, sort and paging compose, and `meta.total` ' +
+        'A page of products. Search, category and brand filters, sort and paging compose, and `meta.total` ' +
         'is counted after filters and before pagination. `q` is a case-insensitive substring ' +
         'match over title and description.',
       parameters: [
         ...pageParams,
         queryParam('q', 'Case-insensitive substring match over title and description.'),
         queryParam('category', 'Only products in this category (slug).'),
+        queryParam('brand', 'Only products of this brand (name).'),
         queryParam(
           'stockStatus',
           `Only products in this stock band: \`out\` is 0 units, \`low\` is 1 up to ${LOW_STOCK_THRESHOLD}, ` +
@@ -260,7 +277,7 @@ function operationSpecs(): OperationSpec[] {
       summary: 'Create a product',
       description:
         'Validates the full body and creates the product. `id` and `meta` are assigned by the ' +
-        'server and ignored if sent. The category must already exist.',
+        'server and ignored if sent. The category and the brand must already exist.',
       requestBody: {
         schema: 'CreateProduct',
         example: {
@@ -370,6 +387,56 @@ function operationSpecs(): OperationSpec[] {
         },
       },
     },
+    {
+      method: 'get',
+      path: '/api/brands',
+      tag: 'Brands',
+      summary: 'List brands',
+      description:
+        'A page of brands in alphabetical order, in the same envelope as the product list.',
+      parameters: pageParams,
+      success: { status: '200', description: 'A page of brands.', schema: 'BrandList' },
+      errors: ['400', '500'],
+    },
+    {
+      method: 'post',
+      path: '/api/brands',
+      tag: 'Brands',
+      summary: 'Create a brand',
+      description: 'Creates a brand from its name.',
+      requestBody: { schema: 'CreateBrand', example: { name: 'ACME' } },
+      success: { status: '201', description: 'The created brand.', schema: 'BrandResponse' },
+      errors: ['400', '409', '500'],
+      errorExamples: {
+        '400': validationError('name', 'is required'),
+        '409': {
+          code: 'CONFLICT',
+          message: 'A brand "ACME" already exists',
+          details: [{ path: 'name', message: 'is already in use' }],
+        },
+      },
+    },
+    {
+      method: 'delete',
+      path: '/api/brands/{name}',
+      tag: 'Brands',
+      summary: 'Delete a brand',
+      description:
+        'Removes an unused brand. A brand that any product still uses is a `409`; ' +
+        'products are never reassigned or deleted.',
+      parameters: [nameParam],
+      success: { status: '204', description: 'Deleted. The response has no body.' },
+      errors: ['400', '404', '409', '500'],
+      errorExamples: {
+        '400': validationError('name', 'must not contain "/"'),
+        '404': { code: 'NOT_FOUND', message: 'Brand "Initech" not found' },
+        '409': {
+          code: 'CONFLICT',
+          message: 'Brand "ACME" still has products',
+          details: [{ path: 'brand', message: 'is still used by at least one product' }],
+        },
+      },
+    },
   ];
 }
 
@@ -436,6 +503,7 @@ export function buildOpenApiDocument(implemented: ReadonlySet<string>) {
     tags: [
       { name: 'Products', description: 'Browse, search and maintain products.' },
       { name: 'Categories', description: 'The categories products belong to.' },
+      { name: 'Brands', description: 'The brands products are sold under.' },
     ],
     paths,
     components: { schemas: componentSchemas() },

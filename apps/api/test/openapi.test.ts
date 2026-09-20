@@ -1,7 +1,9 @@
 import SwaggerParser from '@apidevtools/swagger-parser';
 import {
   ERROR_CODES,
+  brandSchema,
   categorySchema,
+  createBrandSchema,
   createCategorySchema,
   createProductSchema,
   patchProductSchema,
@@ -36,13 +38,16 @@ interface Doc {
 }
 
 const EXPECTED_OPERATIONS = [
+  'DELETE /api/brands/{name}',
   'DELETE /api/categories/{slug}',
   'DELETE /api/products/{id}',
+  'GET /api/brands',
   'GET /api/categories',
   'GET /api/products',
   'GET /api/products/stats',
   'GET /api/products/{id}',
   'PATCH /api/products/{id}',
+  'POST /api/brands',
   'POST /api/categories',
   'POST /api/products',
 ];
@@ -57,6 +62,9 @@ const EXPECTED_STATUSES: Record<string, string[]> = {
   'GET /api/categories': ['200', '400', '500'],
   'POST /api/categories': ['201', '400', '409', '500'],
   'DELETE /api/categories/{slug}': ['204', '400', '404', '409', '500'],
+  'GET /api/brands': ['200', '400', '500'],
+  'POST /api/brands': ['201', '400', '409', '500'],
+  'DELETE /api/brands/{name}': ['204', '400', '404', '409', '500'],
 };
 
 /** Operations whose route exists in the real app. Add each one here as its backlog item lands. */
@@ -70,6 +78,9 @@ const IMPLEMENTED_OPERATIONS = new Set([
   'GET /api/categories',
   'POST /api/categories',
   'DELETE /api/categories/{slug}',
+  'GET /api/brands',
+  'POST /api/brands',
+  'DELETE /api/brands/{name}',
 ]);
 
 let testDb: TestDb;
@@ -259,6 +270,7 @@ describe('operations', () => {
     const byName = Object.fromEntries(params.map((param) => [param.name, param]));
 
     expect(Object.keys(byName).sort()).toEqual([
+      'brand',
       'category',
       'page',
       'pageSize',
@@ -371,14 +383,35 @@ describe('operations', () => {
     });
   });
 
-  it('groups operations under Products and Categories', async () => {
+  it('groups operations under Products, Categories and Brands', async () => {
     const doc = await fetchDoc(newApp());
 
     for (const [key, operation] of operations(doc)) {
-      expect(operation.tags, key).toEqual([
-        key.includes('/categories') ? 'Categories' : 'Products',
-      ]);
+      const tag = key.includes('/categories')
+        ? 'Categories'
+        : key.includes('/brands')
+          ? 'Brands'
+          : 'Products';
+      expect(operation.tags, key).toEqual([tag]);
     }
+  });
+
+  it('describes a brand as a name and nothing else', async () => {
+    const { schemas } = (await fetchDoc(newApp())).components;
+
+    expect(Object.keys((schemas.Brand as { properties: Schema }).properties)).toEqual(['name']);
+    expect(Object.keys((schemas.CreateBrand as { properties: Schema }).properties)).toEqual([
+      'name',
+    ]);
+  });
+
+  it('paginates the brand list and filters the product list by brand', async () => {
+    const doc = await fetchDoc(newApp());
+    const brandParams = operations(doc).get('GET /api/brands')?.parameters ?? [];
+    const productParams = operations(doc).get('GET /api/products')?.parameters ?? [];
+
+    expect(brandParams.map((param) => param.name).sort()).toEqual(['page', 'pageSize']);
+    expect(productParams.map((param) => param.name)).toContain('brand');
   });
 });
 
@@ -448,6 +481,19 @@ describe('response examples', () => {
     const page = exampleOf(ops.get('GET /api/categories'), '200') as { data: unknown[] };
     expect(page.data.length).toBeGreaterThan(0);
     for (const category of page.data) expect(categorySchema.safeParse(category).success).toBe(true);
+  });
+
+  it('shows brand examples that pass the shared brand schema', async () => {
+    const ops = operations(await fetchDoc(newApp()));
+
+    const created = exampleOf(ops.get('POST /api/brands'), '201');
+    expect(brandSchema.safeParse(created?.data).success).toBe(true);
+    const body = ops.get('POST /api/brands')?.requestBody?.content['application/json']?.example;
+    expect(createBrandSchema.safeParse(body).success).toBe(true);
+
+    const page = exampleOf(ops.get('GET /api/brands'), '200') as { data: unknown[] };
+    expect(page.data.length).toBeGreaterThan(0);
+    for (const brand of page.data) expect(brandSchema.safeParse(brand).success).toBe(true);
   });
 });
 

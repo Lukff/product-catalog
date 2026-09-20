@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { categorySlugSchema } from './product.js';
+import { brandNameSchema, categorySlugSchema } from './product.js';
 import { stockStatusSchema } from './stock.js';
 
 export const DEFAULT_PAGE_SIZE = 30;
@@ -35,6 +35,7 @@ export const listQuerySchema = z.object({
     .transform((value) => (value === '' ? undefined : value))
     .optional(),
   category: categorySlugSchema.optional(),
+  brand: brandNameSchema.optional(),
   stockStatus: stockStatusSchema.optional(),
   sort: sortSchema.optional(),
 });

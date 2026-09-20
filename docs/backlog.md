@@ -303,6 +303,86 @@ Web:
 - The feature is reachable from the dashboard without a second navigation level.
 - Out of scope: configurable thresholds, notifications, history.
 
+### B-17 — Brands
+
+**Status:** Done
+**Depends on:** B-03, B-08, B-11
+
+Brand moves out of the product row into its own table, mirroring how B-11 modelled
+categories. Update `technical-decisions.md` (§3.2 endpoints, §4 field rules, data
+model) in the same change.
+
+API:
+
+- A `brands` table (unique `name`) and `products.brand_id` as an integer FK with
+  `ON DELETE RESTRICT`; migration generated and `pnpm db:migrate` works from a clean
+  checkout. Existing rows are backfilled from the current `brand` values.
+- `GET /api/brands` returns the paginated envelope.
+- `POST /api/brands` creates a brand from its name, validated with a shared schema;
+  a duplicate name returns `409 CONFLICT`.
+- `DELETE /api/brands/:name` (URL-encoded; the name rejects `/`) answers `204`; an
+  unknown brand returns `404`, and a brand that any product still uses returns
+  `409 CONFLICT` (no reassign, no cascade). It is keyed by name, not id, so the
+  surrogate id stays off the wire.
+- A product write with a `brand` that matches no brand returns `400
+  VALIDATION_ERROR` with `details` naming `brand`; a product write never creates a
+  brand.
+- `?brand=` on the products list filters, composing with `q`, `category`,
+  `stockStatus`, `sort` and pagination.
+- The wire contract (`brand` as a string) is unchanged; the surrogate `brand_id`
+  never appears in a response.
+- Seed creates each distinct brand in `seed.json` before the products that reference
+  it; `pnpm db:seed` stays idempotent for brands too.
+- Every new route has its operation in `apps/api/src/openapi/document.ts`.
+- Integration tests: brand CRUD including the duplicate and in-use conflicts, the
+  unknown-brand rejection on create and patch, and the `?brand=` filter.
+
+Web:
+
+- The product form's brand field (create and edit) is a select of the existing
+  brands, not free text, following the category select's behaviour: placeholder on
+  create, current value kept on edit, and a hint when there are no brands or the
+  list failed to load.
+- A "Manage brands" dialog opened from the toolbar lists the brands with a remove
+  button each, plus one input to add; server errors (duplicate on add, in use on
+  remove) show inline.
+- The toolbar gains a brand select that filters the list and is mirrored into the
+  URL; after an add or remove it refreshes, and removing the active filter's brand
+  resets the filter.
+- A web test covers the brand select in the product form.
+
+### B-18 — Create brands and categories from the product form
+
+**Status:** Todo
+**Depends on:** B-11, B-17
+
+Lets a user register a product whose category or brand does not exist yet without
+leaving the form. This reverses B-11's "categories are added from the toolbar's
+dialog, not from the product form"; update that note and the affected
+`technical-decisions.md` text in the same change.
+
+API: no change. The creation stays explicit — the form calls `POST /api/categories`
+or `POST /api/brands` first, then submits the product. A product write still never
+creates a category or brand implicitly, and an unknown one is still
+`400 VALIDATION_ERROR`.
+
+Web:
+
+- The category and brand selects in `ProductForm` (create and edit) end with an
+  "Add new…" option that reveals an inline input plus a confirm and a cancel button.
+- Confirming calls the matching create endpoint, refreshes the shared store so the
+  toolbar select and the "Manage" dialogs also show the new entry, and selects it in
+  the form. The product itself is not submitted by this step.
+- The inline input is validated client-side with the same shared schema as the
+  dialogs. A server error (duplicate, invalid) shows inline under that field; on a
+  duplicate, the form offers to select the existing entry.
+- Pending and error states on the inline add; cancelling restores the previous
+  selection. Form data already typed is never lost.
+- If the product submit later fails, the newly created category or brand is kept —
+  it is a valid catalog entry in its own right.
+- Web tests: adding a category inline selects it and refreshes the store; a
+  duplicate shows the inline error; cancel restores the prior selection.
+
 ---
 
 ## Phase 5 — Cross-cutting

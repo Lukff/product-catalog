@@ -1,10 +1,12 @@
 import type { Product } from '@catalog/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  brandOptions,
   categoryOptions,
   changedFields,
   detailsToFieldErrors,
   EMPTY_VALUES,
+  optionsHint,
   validateProductForm,
   valuesFromProduct,
   type ProductFormValues,
@@ -80,6 +82,20 @@ describe('validateProductForm', () => {
 
   it('rejects a category that is not a lowercase slug with the shared message', () => {
     expect(errorsFor({ category: 'Home Decor' }).category).toContain('lowercase slug');
+  });
+
+  it('requires a brand, since the select starts on its placeholder', () => {
+    expect(errorsFor({ brand: '' })).toEqual({ brand: 'is required' });
+    expect(errorsFor({ brand: '   ' })).toEqual({ brand: 'is required' });
+  });
+
+  it('maps a server "unknown brand" detail onto the brand field', () => {
+    expect(
+      detailsToFieldErrors([{ path: 'brand', message: '"Nobody Inc" is not an existing brand' }]),
+    ).toEqual({
+      fields: { brand: '"Nobody Inc" is not an existing brand' },
+      unmatched: [],
+    });
   });
 
   it('reports several problems at once', () => {
@@ -181,6 +197,41 @@ describe('changedFields', () => {
       category: 'tools',
       sku: 'ACM-2',
     });
+  });
+});
+
+describe('brandOptions', () => {
+  const names = ['ACME', 'Globex'];
+
+  it('is the list as it is when there is nothing extra to keep', () => {
+    expect(brandOptions(names, '')).toEqual(names);
+    expect(brandOptions(names, 'Globex')).toEqual(names);
+  });
+
+  it('keeps the original brand as an option when it is missing from the list', () => {
+    expect(brandOptions(names, 'Old Brand')).toEqual(['Old Brand', 'ACME', 'Globex']);
+  });
+
+  it('returns a copy, not the store array', () => {
+    expect(brandOptions(names, '')).not.toBe(names);
+  });
+});
+
+describe('optionsHint', () => {
+  it('says the list could not be loaded when it failed', () => {
+    expect(optionsHint('error', 0, 'brands')).toBe('Could not load the brands.');
+  });
+
+  it('points at the toolbar when the loaded list is empty', () => {
+    expect(optionsHint('ready', 0, 'brands')).toBe(
+      'No brands yet. Add one with Manage in the toolbar.',
+    );
+    expect(optionsHint('ready', 0, 'categories')).toMatch(/^No categories yet/);
+  });
+
+  it('has nothing to say while loading or when there are options', () => {
+    expect(optionsHint('loading', 0, 'brands')).toBe('');
+    expect(optionsHint('ready', 2, 'brands')).toBe('');
   });
 });
 

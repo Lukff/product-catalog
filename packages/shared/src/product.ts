@@ -12,6 +12,16 @@ export const categorySlugSchema = z
 const text = (max: number) =>
   z.string().trim().min(1, 'is required').max(max, `must be at most ${max} characters`);
 
+/**
+ * A brand's name, which identifies it on the wire. It is used as the `:name` path
+ * segment of `DELETE /api/brands/:name`, so a `/` is rejected. Shared with the product
+ * `brand` field and the list-query `brand` filter.
+ */
+export const brandNameSchema = text(100).refine(
+  (name) => !name.includes('/'),
+  'must not contain "/"',
+);
+
 const hasAtMostTwoDecimals = (value: number) => Number(value.toFixed(2)) === value;
 
 /** Fields a client supplies when creating or replacing part of a product. */
@@ -24,7 +34,7 @@ const editableFields = {
     .min(0, 'must be >= 0')
     .refine(hasAtMostTwoDecimals, 'must have at most 2 decimal places'),
   stock: z.number().int('must be an integer').min(0, 'must be >= 0'),
-  brand: text(100),
+  brand: brandNameSchema,
   sku: text(64),
   weight: z.number().gt(0, 'must be > 0'),
 };
