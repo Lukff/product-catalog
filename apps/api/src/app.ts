@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Db } from './db/client.js';
 import { handleError, handleNotFound } from './middleware/error-handler.js';
+import { registerDocs } from './openapi/docs.js';
 
 export interface AppDeps {
   db: Db;
@@ -16,6 +17,7 @@ export function createApp(_deps: AppDeps) {
 
   app.onError(handleError);
   app.notFound(handleNotFound);
+  registerDocs(app);
 
   return app;
 }
