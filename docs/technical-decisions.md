@@ -62,7 +62,7 @@ product-catalog/
         lib/product-form.ts form values, validation against shared schema, error mapping
         lib/stores/       catalog query state (runes); product-dialog.svelte.ts (modal view & flows)
         components/       ProductTable, Filters, ProductForm, Pagination, Modal, MetricTiles
-        views/            Dashboard, ProductDetail, ProductDialog (modal router)
+        views/            Dashboard, ProductDetail, ProductDeleteConfirm, ProductDialog (modal router)
       test/               unit tests (Vitest, run from the root)
       vite.config.ts      dev proxy /api -> http://localhost:3000; Tailwind and Svelte plugins
   packages/
@@ -113,6 +113,8 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 - **PATCH only** (the brief permits PUT *or* PATCH). One write path means one validation schema and no ambiguity about whether omitted fields are cleared.
 - **Single-product path param (`:id`):** validated with `productIdParamSchema` from `packages/shared`. Non-numeric or fractional strings return `400 VALIDATION_ERROR` with message `'must be an integer'`; values below 1 return `'must be >= 1'`.
 - **POST `/api/products` order of checks:** request body JSON parsing (`400` with empty path and `'must be valid JSON'` if malformed) -> shared schema validation (`400` with field-level `details`) -> category existence check (`400` naming `category`) -> sku uniqueness check (`409`). Both timestamps are set to the same server clock ISO timestamp; `id` and client-sent timestamps are stripped.
+- **PATCH `/api/products/:id` order of checks:** path param `id` validation (`400`) -> request body JSON parsing (`400` with empty path and `'must be valid JSON'`) -> shared schema validation (`400` with field-level `details`, or `'must include at least one field'`) -> product exists (`404`) -> category existence check (`400` naming `category`) -> sku owned by another product (`409` with `details` naming `sku`). A product re-sending its own sku is not a conflict. Only the fields present in the patch are written and `updatedAt` is refreshed from the server clock; `id` and client-sent timestamps are stripped.
+- **DELETE `/api/products/:id`:** path param `id` validation (`400`) -> product deletion. Answers `204` with an empty body, and `404 NOT_FOUND` for an absent or already deleted id, with no cascade (categories are untouched).
 
 ### 3.3 Errors
 
@@ -190,9 +192,9 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 - **Metric strip** - headline counts over the catalog (exact contents depend on open decision #2).
 - **Toolbar** - debounced search box, category select, sort select, page-size select.
 - **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal. Stock status is derived, not sent by the API: `stockStatus()` in `packages/shared` returns `out` at 0, `low` from 1 to `LOW_STOCK_THRESHOLD` (5, matching the seed), otherwise `in`.
-- **Detail modal and dialog store** - the modal is a native `<dialog>` (`showModal()`), which supplies Escape-to-close, the focus trap, and focus restoration to the opener automatically. Opening a row shows the list's data immediately and refreshes it in the background from `GET /api/products/:id` (`ProductDialogStore` in `lib/stores/product-dialog.svelte.ts`). Edit and Delete buttons render disabled with a "Coming soon" tooltip until B-10 wires them.
-- **Product form** - one component for create and edit (`ProductForm.svelte`), validated client-side with the same Zod schema the API uses (`lib/product-form.ts`), so messages match. After a successful create, the list resets to newest-first (`sort: '-createdAt'`) with filters cleared and the modal shows the new product. The category field is a free-text slug input until B-11 provides the category dropdown.
-- **Delete** - confirmation step; destructive actions are never one click.
+- **Detail modal and dialog store** - the modal is a native `<dialog>` (`showModal()`), which supplies Escape-to-close, the focus trap, and focus restoration to the opener automatically. Opening a row shows the list's data immediately and refreshes it in the background from `GET /api/products/:id` (`ProductDialogStore` in `lib/stores/product-dialog.svelte.ts`). Edit and Delete work inside the same modal (`detail` -> `edit` / `delete` -> back to `detail`), waiting for the detail refresh so edits start from the server's copy.
+- **Product form** - one component for create and edit (`ProductForm.svelte`), validated client-side with the same Zod schema the API uses (`lib/product-form.ts`), so messages match. When editing, the form is pre-filled, computes and sends only changed fields, and sends nothing if nothing changed; on save success the list reloads and the modal shows the updated product. After a successful create, the list resets to newest-first (`sort: '-createdAt'`) with filters cleared and the modal shows the new product. The category field is a free-text slug input until B-11 provides the category dropdown.
+- **Delete** - confirmation step inside the modal (`ProductDeleteConfirm.svelte`) with Cancel focused; destructive actions are never one click. On delete success the modal closes and the list reloads, stepping back one page if the deleted row was the last on a page after the first (`reloadAfterDelete()`).
 - **State** - Svelte 5 runes (`$state`, `$derived`) in a small `catalog` store holding query params and results. Query params are mirrored into the URL (`lib/query-params.ts`) so a filtered view is shareable and the back button behaves: only params that differ from the defaults are written, each change adds a history entry, `popstate` re-applies the URL, and an invalid link falls back to the default list. Any filter change goes back to page 1. The search box is debounced (300 ms); while a new page loads the previous rows stay on screen, dimmed.
 - **Loading, error and empty states** are explicit for the list and every mutation; API error `details` map back onto the offending form fields.
 
