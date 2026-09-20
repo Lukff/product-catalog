@@ -4,3 +4,4 @@ export * from './error-details.js';
 export * from './json-schema.js';
 export * from './product.js';
 export * from './query.js';
+export * from './stock.js';

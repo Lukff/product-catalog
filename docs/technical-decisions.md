@@ -168,7 +168,7 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 - `id` and `meta` are stripped from create and patch bodies rather than rejected.
 - A `category` slug that matches no row in `categories` is rejected with `400 VALIDATION_ERROR` naming `category`; a category is never created implicitly by a product write.
 
-**Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by a serializer at the route boundary. The brief's JSON shape is preserved without a nested-object column. Likewise `category_id` is resolved to the category's slug on the way out, and the slug back to an id on the way in, so the wire contract never exposes the surrogate key.
+**Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by the product service (`toProduct` in `services/product-service.ts`; routes may not import row types, so the mapping cannot live at the route boundary). The brief's JSON shape is preserved without a nested-object column. Likewise `category_id` is resolved to the category's slug on the way out, and the slug back to an id on the way in, so the wire contract never exposes the surrogate key.
 
 **Categories:** `categories(id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE)`. A slug is the only attribute for now; a display name can be added by a later migration if the UI needs one. SQLite ignores foreign keys unless `PRAGMA foreign_keys = ON` is set on each connection, so `createDb()` does that. Deleting a category that still has products is refused (SQLite reports it as `SQLITE_CONSTRAINT_TRIGGER`; inserting a product for a missing category is `SQLITE_CONSTRAINT_FOREIGNKEY`).
 
@@ -186,7 +186,7 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 
 - **Metric strip** - headline counts over the catalog (exact contents depend on open decision #2).
 - **Toolbar** - debounced search box, category select, sort select, page-size select.
-- **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal.
+- **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal. Stock status is derived, not sent by the API: `stockStatus()` in `packages/shared` returns `out` at 0, `low` from 1 to `LOW_STOCK_THRESHOLD` (5, matching the seed), otherwise `in`.
 - **Detail modal** - full record, with Edit and Delete actions.
 - **Product form** - one component for create and edit, validated client-side with the same Zod schema the API uses, so messages match.
 - **Delete** - confirmation step; destructive actions are never one click.
@@ -206,6 +206,8 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 - `DELETE` returns 204, and a second delete returns 404
 
 **Unit tests:** query-param parsing (page/pageSize/sort coercion and bounds) and the shared Zod schemas.
+
+**Test projects:** the root `vitest.config.ts` declares one Vitest project per workspace package. `apps/web` has its own `vitest.config.ts` with the Svelte plugin, so runes in `*.svelte.ts` modules (the catalog store) compile under test.
 
 **CI:** `.github/workflows/ci.yml` on push and pull request - `pnpm install --frozen-lockfile` -> `tsc --noEmit` -> lint -> `vitest run` -> `pnpm audit`.
 
