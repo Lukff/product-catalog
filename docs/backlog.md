@@ -7,8 +7,8 @@ order** — nothing else.
 
 - Status values: `Todo`, `In progress`, `Blocked`, `Done`.
 - Items are sequenced as a walking skeleton: one thin end-to-end slice first,
-  then feature slices. Each slice is split into an API item and a Web item, and
-  the Web item depends on its API counterpart.
+  then feature slices. Each feature item is a vertical slice covering both the API
+  and the Web side, built API first.
 - Tests are not separate items. Each item's acceptance criteria name the tests
   from `technical-decisions.md` §6 that prove it.
 
@@ -26,7 +26,7 @@ that code is written.
 integer FK (`technical-decisions.md` §7.1 option a). The wire contract is unchanged
 (`category` stays a string slug). Schema landed with B-03.
 
-**Gated:** B-18, B-19 — now unblocked.
+**Gated:** B-11 — now unblocked.
 
 ### D-2 — Unprompted custom feature
 
@@ -35,7 +35,7 @@ metrics, audit log of mutations, bulk operations, CSV import/export. The choice
 also determines the contents of the SPA metric strip. Must be documented with
 problem, persona and rationale.
 
-**Gates:** B-20, B-21.
+**Gates:** B-12.
 
 ---
 
@@ -115,10 +115,12 @@ problem, persona and rationale.
 
 ## Phase 1 — Walking skeleton
 
-### B-06 — (API) List products
+### B-06 — List products
 
 **Status:** Todo
-**Depends on:** B-03, B-04
+**Depends on:** B-03, B-04, B-05
+
+API:
 
 - `GET /api/products` returns the envelope with `data` and `meta`.
 - Defaults to `pageSize` 30; `pageSize` above 100 is rejected or capped per the
@@ -127,10 +129,7 @@ problem, persona and rationale.
   `meta.totalPages` is consistent with it.
 - Integration test asserts the default page size and the `meta` values.
 
-### B-07 — (Web) Dashboard and product table
-
-**Status:** Todo
-**Depends on:** B-05, B-06
+Web:
 
 - Dashboard view renders `ProductTable` from the live API — the first
   end-to-end slice.
@@ -142,28 +141,29 @@ problem, persona and rationale.
 
 ## Phase 2 — Read slices
 
-### B-08 — (API) Get one product
+### B-07 — Product detail
 
 **Status:** Todo
 **Depends on:** B-06
+
+API:
 
 - `GET /api/products/:id` returns `{ "data": { ... } }`.
 - Unknown id returns `404 NOT_FOUND` in the error envelope.
 - Non-numeric id returns `400 VALIDATION_ERROR`.
 
-### B-09 — (Web) Product detail modal
-
-**Status:** Todo
-**Depends on:** B-07, B-08
+Web:
 
 - Clicking a row opens a modal showing the full record.
-- Modal has Edit and Delete affordances (wired in B-15 and B-17).
+- Modal has Edit and Delete affordances (wired in B-10).
 - Closes on escape and on backdrop click; focus is trapped while open.
 
-### B-10 — (API) Search, sort and category filter
+### B-08 — Search, sort, filter and pagination
 
 **Status:** Todo
 **Depends on:** B-06
+
+API:
 
 - `?q=` is a case-insensitive substring match over `title` **and**
   `description`, and composes with the other params.
@@ -175,10 +175,7 @@ problem, persona and rationale.
 - Integration tests cover case-insensitive description match, `-price` ordering
   and the rejected sort field.
 
-### B-11 — (Web) Toolbar, pagination and URL state
-
-**Status:** Todo
-**Depends on:** B-07, B-10
+Web:
 
 - Debounced search box, sort select and page-size select drive the catalog
   store.
@@ -186,16 +183,18 @@ problem, persona and rationale.
 - Query params are mirrored into the URL so a filtered view is shareable and the
   back button restores the previous query.
 - Changing any filter resets to page 1.
-- The category select is present but populated in B-19.
+- The category select is present but populated in B-11.
 
 ---
 
 ## Phase 3 — Write slices
 
-### B-12 — (API) Create product
+### B-09 — Create product
 
 **Status:** Todo
-**Depends on:** B-06
+**Depends on:** B-08
+
+API:
 
 - `POST /api/products` validates the full body and returns `201` with the
   created record.
@@ -206,10 +205,7 @@ problem, persona and rationale.
   `details` naming `category`; a product write never creates a category.
 - Duplicate `sku` returns `409 CONFLICT`.
 
-### B-13 — (Web) Create product form
-
-**Status:** Todo
-**Depends on:** B-11, B-12
+Web:
 
 - One `ProductForm` component, validated client-side with the same shared Zod
   schema the API uses, so messages match.
@@ -218,54 +214,43 @@ problem, persona and rationale.
   sku surfaces on the sku field, not as a banner.
 - Explicit pending and error states on submit.
 
-### B-14 — (API) Update product
+### B-10 — Edit and delete product
 
 **Status:** Todo
-**Depends on:** B-08
+**Depends on:** B-07, B-09
+
+API:
 
 - `PATCH /api/products/:id` accepts any subset of fields and returns `200`.
 - `meta.updatedAt` is refreshed; `meta.createdAt` is untouched.
 - Unknown id returns `404`; duplicate `sku` returns `409`; an unknown `category`
   slug returns `400 VALIDATION_ERROR` naming `category`.
 - Integration test asserts both the field change and the bumped `updatedAt`.
+- `DELETE /api/products/:id` returns `204` with an empty body.
+- A second delete of the same id returns `404`.
 
-### B-15 — (Web) Edit product
-
-**Status:** Todo
-**Depends on:** B-09, B-13, B-14
+Web:
 
 - Edit reuses `ProductForm` pre-filled from the record — no second form
   component.
 - Only changed fields are sent.
 - The detail modal and the list both reflect the update without a full reload.
-
-### B-16 — (API) Delete product
-
-**Status:** Todo
-**Depends on:** B-08
-
-- `DELETE /api/products/:id` returns `204` with an empty body.
-- A second delete of the same id returns `404`.
-
-### B-17 — (Web) Delete product
-
-**Status:** Todo
-**Depends on:** B-09, B-16
-
 - Delete requires a confirmation step — destructive actions are never one click.
-- On success the modal closes and the list refreshes, staying on a valid page if
-  the last row of the page was removed.
+- On delete success the modal closes and the list refreshes, staying on a valid
+  page if the last row of the page was removed.
 
 ---
 
 ## Phase 4 — Categories and the custom feature
 
-B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
+B-11 was unblocked by D-1; B-12 remains blocked on D-2.
 
-### B-18 — (API) Categories endpoints
+### B-11 — Categories
 
 **Status:** Todo
-**Depends on:** B-03
+**Depends on:** B-03, B-08
+
+API:
 
 - `GET /api/categories` returns the paginated envelope.
 - `POST /api/categories` creates a category from its slug, validated with the
@@ -275,16 +260,13 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
 - The wire contract (`category` as a string slug) is unchanged; the surrogate
   `category_id` never appears in a response.
 
-### B-19 — (Web) Category filter
-
-**Status:** Todo
-**Depends on:** B-11, B-18
+Web:
 
 - The toolbar's category select is populated from `GET /api/categories` rather
   than hardcoded.
 - Selecting a category filters the list and is reflected in the URL.
 
-### B-20 — (API) Custom feature
+### B-12 — Custom feature and metric strip
 
 **Status:** Blocked — D-2
 **Depends on:** B-06, D-2
@@ -292,20 +274,14 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
 - Scope, endpoints and acceptance criteria to be filled in once D-2 is resolved.
 - Whatever it is, it ships with integration tests and is documented in
   `README.md` with problem, persona and rationale.
-
-### B-21 — (Web) Metric strip and custom feature UI
-
-**Status:** Blocked — D-2
-**Depends on:** B-07, B-20
-
-- Metric strip contents follow from D-2.
+- Web: metric strip contents follow from D-2.
 - The feature is reachable from the dashboard without a second navigation level.
 
 ---
 
 ## Phase 5 — Cross-cutting
 
-### B-22 — CI workflow
+### B-13 — CI workflow
 
 **Status:** In progress — workflow written, not yet run on GitHub
 **Depends on:** B-01
@@ -315,7 +291,7 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
   `pnpm audit`.
 - Green on a clean checkout of `main`.
 
-### B-23 — README
+### B-14 — README
 
 **Status:** Todo
 **Depends on:** B-05
@@ -328,7 +304,7 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
   including Playwright end-to-end coverage and authentication, both deliberately
   out of scope.
 
-### B-24 — AI.md kept current
+### B-15 — AI.md kept current
 
 **Status:** Ongoing
 **Depends on:** —
@@ -339,7 +315,7 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
 - Entries use the `ai-log` skill and are never written without the user's own
   input.
 
-### B-25 — API documentation (Swagger)
+### B-16 — API documentation (Swagger)
 
 **Status:** Done
 **Depends on:** B-03
@@ -350,3 +326,24 @@ B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
   flagged "Not implemented yet" automatically.
 - **Standing rule for every API item (B-06 onward):** a new route must have its
   operation in `apps/api/src/openapi/document.ts`. A test fails otherwise.
+
+---
+
+## Renumbering (2026-09-19)
+
+Items from B-06 onward were merged into vertical slices and renumbered. B-01 to
+B-05 are unchanged. `AI.md` entries and earlier commits and PRs use the old IDs.
+
+| New | Old |
+|---|---|
+| B-06 | B-06, B-07 |
+| B-07 | B-08, B-09 |
+| B-08 | B-10, B-11 |
+| B-09 | B-12, B-13 |
+| B-10 | B-14, B-15, B-16, B-17 |
+| B-11 | B-18, B-19 |
+| B-12 | B-20, B-21 |
+| B-13 | B-22 |
+| B-14 | B-23 |
+| B-15 | B-24 |
+| B-16 | B-25 |
