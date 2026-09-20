@@ -211,3 +211,27 @@ browser check found two problems the tests had not: the 409 and 500 examples sho
 validation error, and the 201 example showed a random string for the category. The
 model fixed both with explicit examples, writing the failing tests first. It also
 caught a typecheck failure that its own grep-based check had missed.
+
+## 2026-09-19 — Backlog consolidation into vertical slices
+
+**Context:** B-01 to B-05 (the scaffolding steps) were done and merged. The remaining
+backlog from B-06 onward paired every feature into an API item and a Web item, 25 items in
+all. This step restructures `docs/backlog.md` and serves no single backlog item.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "i think the next tasks on
+the backlog are too fine broken, I want to merge some items", with no target given. After
+the model's proposal I answered "Yes, that granularity works, renumber them".
+
+**What happened:** I opted to merge some items to speed a bit the development. The model
+read the backlog and proposed collapsing each API+Web pair into one vertical slice, seven
+items in place of sixteen, and asked me two questions: whether the granularity was right,
+and whether to renumber or keep the old IDs. I approved the granularity and chose
+renumbering. It worked in its own worktree and rewrote `docs/backlog.md` (25 items down to
+16), keeping every acceptance criterion under "API:" and "Web:" headings and adding an
+old-to-new mapping table, because `AI.md` and earlier PRs use the old IDs. Its first
+message said Phase 5 IDs would be unchanged, which contradicted sequential renumbering. It
+corrected that in its summary. Committed as `1330db7` on
+`worktree-docs-merge-backlog-slices` and pushed, no PR opened.
+
+**Reflection:** I think it worked for the scaffolding steps but we can work in bigger
+blocks now.
