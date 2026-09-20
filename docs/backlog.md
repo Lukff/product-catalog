@@ -22,11 +22,11 @@ that code is written.
 
 ### D-1 — Category modelling
 
-See `technical-decisions.md` §7.1. Options: categories table with FK, plain text
-column with `DISTINCT`, or a registry table without FK. Does not change the wire
-contract (`category` stays a string slug either way).
+**Resolved 2026-09-19:** a `categories` table with `products.category_id` as an
+integer FK (`technical-decisions.md` §7.1 option a). The wire contract is unchanged
+(`category` stays a string slug). Schema landed with B-03.
 
-**Gates:** B-18, B-19.
+**Gated:** B-18, B-19 — now unblocked.
 
 ### D-2 — Unprompted custom feature
 
@@ -71,30 +71,34 @@ problem, persona and rationale.
 
 ### B-03 — API skeleton
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-02
 
-- `app.ts` exports the Hono app so tests can use `app.request()` without a port;
-  `index.ts` only binds the port.
+- `app.ts` exports a `createApp({ db })` factory returning the Hono app, so tests
+  can use `app.request()` on a throwaway database without a port; `index.ts` only
+  binds the port.
 - Error middleware maps domain errors to the §3.3 shapes for
   `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `INTERNAL_ERROR`.
 - Unknown route returns `404 NOT_FOUND` in the envelope, not Hono's default.
-- Drizzle schema for `products` with flat `created_at` / `updated_at` columns and
-  a unique index on `sku`; migration generated and `pnpm db:migrate` works
-  from a clean checkout.
+- Drizzle schema for `products` (flat `created_at` / `updated_at` columns, a unique
+  index on `sku`, `category_id` FK) and `categories` (unique `slug`); migration
+  generated and `pnpm db:migrate` works from a clean checkout.
 - `routes -> services -> repositories` directories exist and the layering rule
-  holds.
+  holds, enforced by ESLint `no-restricted-imports` so a violation fails lint.
 
 ### B-04 — Seed data
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03
 
 - `seed.json` holds ~30–40 products across several categories and brands, using
   the brief's exact payload shape.
 - Some rows have deliberately low or zero stock so filters and metrics have
   something to show.
-- `pnpm db:seed` is idempotent — running it twice leaves the same row count.
+- The seed creates each distinct category slug in `seed.json` before inserting the
+  products that reference it, so `category_id` resolves.
+- `pnpm db:seed` is idempotent — running it twice leaves the same row count, for
+  categories as well as products.
 
 ### B-05 — Web scaffold
 
@@ -198,6 +202,8 @@ problem, persona and rationale.
 - `id`, `meta.createdAt` and `meta.updatedAt` are server-assigned and ignored if
   the client sends them.
 - Negative price returns `400 VALIDATION_ERROR` with `details` naming `price`.
+- A `category` slug with no matching category returns `400 VALIDATION_ERROR` with
+  `details` naming `category`; a product write never creates a category.
 - Duplicate `sku` returns `409 CONFLICT`.
 
 ### B-13 — (Web) Create product form
@@ -219,7 +225,8 @@ problem, persona and rationale.
 
 - `PATCH /api/products/:id` accepts any subset of fields and returns `200`.
 - `meta.updatedAt` is refreshed; `meta.createdAt` is untouched.
-- Unknown id returns `404`; duplicate `sku` returns `409`.
+- Unknown id returns `404`; duplicate `sku` returns `409`; an unknown `category`
+  slug returns `400 VALIDATION_ERROR` naming `category`.
 - Integration test asserts both the field change and the bumped `updatedAt`.
 
 ### B-15 — (Web) Edit product
@@ -251,23 +258,26 @@ problem, persona and rationale.
 
 ---
 
-## Phase 4 — Blocked on open decisions
+## Phase 4 — Categories and the custom feature
+
+B-18 and B-19 were unblocked by D-1; B-20 and B-21 remain blocked on D-2.
 
 ### B-18 — (API) Categories endpoints
 
-**Status:** Blocked — D-1
-**Depends on:** B-03, D-1
+**Status:** Todo
+**Depends on:** B-03
 
 - `GET /api/categories` returns the paginated envelope.
-- `POST /api/categories` creates a category; request shape follows whatever D-1
-  decides.
-- `?category=` on the products list stays consistent with whatever the categories
+- `POST /api/categories` creates a category from its slug, validated with the
+  shared slug schema; a duplicate slug returns `409 CONFLICT`.
+- `?category=` on the products list stays consistent with what the categories
   endpoint reports.
-- The wire contract (`category` as a string slug) is unchanged either way.
+- The wire contract (`category` as a string slug) is unchanged; the surrogate
+  `category_id` never appears in a response.
 
 ### B-19 — (Web) Category filter
 
-**Status:** Blocked — D-1
+**Status:** Todo
 **Depends on:** B-11, B-18
 
 - The toolbar's category select is populated from `GET /api/categories` rather

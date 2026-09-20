@@ -1,3 +1,11 @@
 packages:
   - apps/*
   - packages/*
+allowBuilds:
+  better-sqlite3: true
+  esbuild: false
+overrides:
+  # drizzle-kit still depends on the deprecated @esbuild-kit loader, which pins an esbuild with
+  # GHSA-67mh-4wv8-2f99 (dev server leaks responses to any website; fixed in 0.25.0). Scoped to
+  # that one edge; drizzle-kit never runs esbuild's dev server. Drop once drizzle-kit moves off it.
+  '@esbuild-kit/core-utils>esbuild': ^0.25.0
