@@ -350,6 +350,38 @@ Web:
   resets the filter.
 - A web test covers the brand select in the product form.
 
+### B-18 — Create brands and categories from the product form
+
+**Status:** Todo
+**Depends on:** B-11, B-17
+
+Lets a user register a product whose category or brand does not exist yet without
+leaving the form. This reverses B-11's "categories are added from the toolbar's
+dialog, not from the product form"; update that note and the affected
+`technical-decisions.md` text in the same change.
+
+API: no change. The creation stays explicit — the form calls `POST /api/categories`
+or `POST /api/brands` first, then submits the product. A product write still never
+creates a category or brand implicitly, and an unknown one is still
+`400 VALIDATION_ERROR`.
+
+Web:
+
+- The category and brand selects in `ProductForm` (create and edit) end with an
+  "Add new…" option that reveals an inline input plus a confirm and a cancel button.
+- Confirming calls the matching create endpoint, refreshes the shared store so the
+  toolbar select and the "Manage" dialogs also show the new entry, and selects it in
+  the form. The product itself is not submitted by this step.
+- The inline input is validated client-side with the same shared schema as the
+  dialogs. A server error (duplicate, invalid) shows inline under that field; on a
+  duplicate, the form offers to select the existing entry.
+- Pending and error states on the inline add; cancelling restores the previous
+  selection. Form data already typed is never lost.
+- If the product submit later fails, the newly created category or brand is kept —
+  it is a valid catalog entry in its own right.
+- Web tests: adding a category inline selects it and refreshes the store; a
+  duplicate shows the inline error; cancel restores the prior selection.
+
 ---
 
 ## Phase 5 — Cross-cutting
