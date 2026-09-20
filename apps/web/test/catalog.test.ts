@@ -182,6 +182,62 @@ describe('CatalogStore', () => {
     );
   });
 
+  it('sends the stockStatus param when it is set', async () => {
+    const fetchMock = vi.fn(async (_url: string) => json(page([product(1)])));
+    vi.stubGlobal('fetch', fetchMock);
+    const store = new CatalogStore();
+
+    await store.update({ category: 'kitchen', stockStatus: 'low', sort: '-stock' });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/products?page=1&pageSize=30&category=kitchen&stockStatus=low&sort=-stock',
+    );
+  });
+
+  describe('toggleStockStatus', () => {
+    it('filters by the status, from page 1, and clears it when the same status is toggled again', async () => {
+      const fetchMock = vi.fn(async (_url: string) => json(page([product(1)])));
+      vi.stubGlobal('fetch', fetchMock);
+      const store = new CatalogStore();
+      await store.update({ page: 3 });
+
+      await store.toggleStockStatus('low');
+      expect(store.params.stockStatus).toBe('low');
+      expect(store.params.page).toBe(1);
+      expect(fetchMock.mock.calls.at(-1)?.[0]).toContain('stockStatus=low');
+
+      await store.toggleStockStatus('low');
+      expect(store.params.stockStatus).toBe('');
+      expect(fetchMock.mock.calls.at(-1)?.[0]).not.toContain('stockStatus');
+    });
+
+    it('switches to the other status instead of clearing', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => json(page([product(1)]))),
+      );
+      const store = new CatalogStore();
+
+      await store.toggleStockStatus('low');
+      await store.toggleStockStatus('out');
+
+      expect(store.params.stockStatus).toBe('out');
+    });
+
+    it('keeps the search and category the list already has', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => json(page([product(1)]))),
+      );
+      const store = new CatalogStore();
+      await store.update({ q: 'flux', category: 'kitchen' });
+
+      await store.toggleStockStatus('out');
+
+      expect(store.params).toMatchObject({ q: 'flux', category: 'kitchen', stockStatus: 'out' });
+    });
+  });
+
   it('goes back to page 1 whenever a filter changes', async () => {
     vi.stubGlobal(
       'fetch',
@@ -226,10 +282,21 @@ describe('CatalogStore', () => {
     vi.stubGlobal('fetch', fetchMock);
     const store = new CatalogStore();
 
-    await store.applyParams({ page: 2, pageSize: 10, q: 'a', category: '', sort: '' });
+    const params = {
+      page: 2,
+      pageSize: 10,
+      q: 'a',
+      category: '',
+      stockStatus: 'low',
+      sort: '',
+    } as const;
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/products?page=2&pageSize=10&q=a');
-    expect(store.params).toEqual({ page: 2, pageSize: 10, q: 'a', category: '', sort: '' });
+    await store.applyParams(params);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/products?page=2&pageSize=10&q=a&stockStatus=low',
+    );
+    expect(store.params).toEqual(params);
   });
 });
 

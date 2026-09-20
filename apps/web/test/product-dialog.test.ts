@@ -54,7 +54,8 @@ function setup() {
     load: vi.fn(async () => {}),
     reloadAfterDelete: vi.fn(async () => {}),
   };
-  return { catalog, store: new ProductDialogStore(catalog) };
+  const stats = { load: vi.fn(async () => {}) };
+  return { catalog, stats, store: new ProductDialogStore(catalog, stats) };
 }
 
 function inputOf(p: Product) {
@@ -174,7 +175,7 @@ describe('ProductDialogStore', () => {
         json(item(created), 201),
       );
       vi.stubGlobal('fetch', fetchMock);
-      const { store, catalog } = setup();
+      const { store, catalog, stats } = setup();
       store.openCreate();
 
       await store.create(newInput);
@@ -183,7 +184,14 @@ describe('ProductDialogStore', () => {
       expect(url).toBe('/api/products');
       expect(init?.method).toBe('POST');
       expect(JSON.parse(String(init?.body))).toEqual(newInput);
-      expect(catalog.update).toHaveBeenCalledWith({ q: '', category: '', sort: '-createdAt' });
+      // The stock filter is cleared too, or a new in-stock product could hide under a Low filter.
+      expect(catalog.update).toHaveBeenCalledWith({
+        q: '',
+        category: '',
+        stockStatus: '',
+        sort: '-createdAt',
+      });
+      expect(stats.load).toHaveBeenCalledOnce();
       expect(store.view).toEqual({ kind: 'detail', product: created });
       expect(store.detailStatus).toBe('ready');
     });
@@ -306,7 +314,7 @@ describe('ProductDialogStore', () => {
       });
       const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => json(item(updated)));
       vi.stubGlobal('fetch', fetchMock);
-      const { store, catalog } = showing(original);
+      const { store, catalog, stats } = showing(original);
       store.openEdit();
 
       await store.update({ ...inputOf(original), price: 12.5 });
@@ -316,6 +324,7 @@ describe('ProductDialogStore', () => {
       expect(init?.method).toBe('PATCH');
       expect(JSON.parse(String(init?.body))).toEqual({ price: 12.5 });
       expect(catalog.load).toHaveBeenCalledOnce();
+      expect(stats.load).toHaveBeenCalledOnce();
       expect(store.view).toEqual({ kind: 'detail', product: updated });
       expect(store.detailStatus).toBe('ready');
     });
@@ -323,13 +332,14 @@ describe('ProductDialogStore', () => {
     it('sends nothing when no field changed, and goes back to the detail view', async () => {
       const fetchMock = vi.fn();
       vi.stubGlobal('fetch', fetchMock);
-      const { store, catalog } = showing(product(5));
+      const { store, catalog, stats } = showing(product(5));
       store.openEdit();
 
       await store.update(inputOf(product(5)));
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(catalog.load).not.toHaveBeenCalled();
+      expect(stats.load).not.toHaveBeenCalled();
       expect(store.view).toEqual({ kind: 'detail', product: product(5) });
     });
 
@@ -398,7 +408,7 @@ describe('ProductDialogStore', () => {
         async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }),
       );
       vi.stubGlobal('fetch', fetchMock);
-      const { store, catalog } = showing(product(5));
+      const { store, catalog, stats } = showing(product(5));
       store.openDelete();
 
       await store.remove();
@@ -408,6 +418,22 @@ describe('ProductDialogStore', () => {
       expect(init?.method).toBe('DELETE');
       expect(store.view).toEqual({ kind: 'closed' });
       expect(catalog.reloadAfterDelete).toHaveBeenCalledOnce();
+      expect(stats.load).toHaveBeenCalledOnce();
+    });
+
+    it('does not refresh the stats when the server refuses the delete', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () =>
+          json({ error: { code: 'NOT_FOUND', message: 'Product 5 not found' } }, 404),
+        ),
+      );
+      const { store, stats } = showing(product(5));
+      store.openDelete();
+
+      await store.remove();
+
+      expect(stats.load).not.toHaveBeenCalled();
     });
 
     it('is pending while the request runs and ignores a second call', async () => {

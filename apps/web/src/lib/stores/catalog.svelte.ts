@@ -1,4 +1,4 @@
-import type { PageMeta, Product } from '@catalog/shared';
+import type { PageMeta, Product, StockStatus } from '@catalog/shared';
 import { api, ApiError } from '../api.js';
 import { DEFAULT_PARAMS, type CatalogParams } from '../query-params.js';
 
@@ -18,6 +18,11 @@ export class CatalogStore {
   update(patch: Partial<CatalogParams>): Promise<void> {
     this.params = { ...this.params, page: 1, ...patch };
     return this.load();
+  }
+
+  /** Filters by this stock status, or clears the filter when it is already the active one. */
+  toggleStockStatus(status: StockStatus): Promise<void> {
+    return this.update({ stockStatus: this.params.stockStatus === status ? '' : status });
   }
 
   /** Replaces every param at once, as when the URL changes under back/forward navigation. */
@@ -51,6 +56,7 @@ export class CatalogStore {
           pageSize: this.params.pageSize,
           q: this.params.q,
           category: this.params.category,
+          stockStatus: this.params.stockStatus,
           sort: this.params.sort,
         },
         signal: request.signal,

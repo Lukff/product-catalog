@@ -7,19 +7,24 @@ describe('paramsFromSearch', () => {
   });
 
   it('reads every param, with or without the leading ?', () => {
-    const expected = { page: 3, pageSize: 50, q: 'flux', category: 'kitchen', sort: '-price' };
+    const expected = {
+      page: 3,
+      pageSize: 50,
+      q: 'flux',
+      category: 'kitchen',
+      stockStatus: 'low',
+      sort: '-price',
+    };
+    const search = 'page=3&pageSize=50&q=flux&category=kitchen&stockStatus=low&sort=-price';
 
-    expect(paramsFromSearch('?page=3&pageSize=50&q=flux&category=kitchen&sort=-price')).toEqual(
-      expected,
-    );
-    expect(paramsFromSearch('page=3&pageSize=50&q=flux&category=kitchen&sort=-price')).toEqual(
-      expected,
-    );
+    expect(paramsFromSearch(`?${search}`)).toEqual(expected);
+    expect(paramsFromSearch(search)).toEqual(expected);
   });
 
   it('falls back to the defaults when a value is invalid, as in a hand-edited link', () => {
     expect(paramsFromSearch('?pageSize=1000')).toEqual(DEFAULT_PARAMS);
     expect(paramsFromSearch('?sort=bogus&q=flux')).toEqual(DEFAULT_PARAMS);
+    expect(paramsFromSearch('?stockStatus=bogus&q=flux')).toEqual(DEFAULT_PARAMS);
     expect(paramsFromSearch('?page=abc')).toEqual(DEFAULT_PARAMS);
   });
 });
@@ -34,6 +39,7 @@ describe('paramsToSearch', () => {
       'q=flux&sort=-price',
     );
     expect(paramsToSearch({ ...DEFAULT_PARAMS, page: 2, pageSize: 10 })).toBe('page=2&pageSize=10');
+    expect(paramsToSearch({ ...DEFAULT_PARAMS, stockStatus: 'out' })).toBe('stockStatus=out');
   });
 
   it('round-trips through paramsFromSearch, including characters that need encoding', () => {
@@ -42,6 +48,7 @@ describe('paramsToSearch', () => {
       pageSize: 10,
       q: 'flux & capacitor 50%',
       category: 'home-decor',
+      stockStatus: 'low',
       sort: 'stock',
     } as const;
 

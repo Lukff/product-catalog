@@ -1,4 +1,9 @@
-import { DEFAULT_PAGE_SIZE, listQuerySchema, type SortParam } from '@catalog/shared';
+import {
+  DEFAULT_PAGE_SIZE,
+  listQuerySchema,
+  type SortParam,
+  type StockStatus,
+} from '@catalog/shared';
 
 /** The list's query state. Empty strings mean "not set", so they can bind straight to inputs. */
 export interface CatalogParams {
@@ -6,6 +11,7 @@ export interface CatalogParams {
   pageSize: number;
   q: string;
   category: string;
+  stockStatus: StockStatus | '';
   sort: SortParam | '';
 }
 
@@ -14,6 +20,7 @@ export const DEFAULT_PARAMS: CatalogParams = {
   pageSize: DEFAULT_PAGE_SIZE,
   q: '',
   category: '',
+  stockStatus: '',
   sort: '',
 };
 
@@ -25,8 +32,15 @@ export function paramsFromSearch(search: string): CatalogParams {
   const parsed = listQuerySchema.safeParse(Object.fromEntries(new URLSearchParams(search)));
   if (!parsed.success) return { ...DEFAULT_PARAMS };
 
-  const { page, pageSize, q, category, sort } = parsed.data;
-  return { page, pageSize, q: q ?? '', category: category ?? '', sort: sort ?? '' };
+  const { page, pageSize, q, category, stockStatus, sort } = parsed.data;
+  return {
+    page,
+    pageSize,
+    q: q ?? '',
+    category: category ?? '',
+    stockStatus: stockStatus ?? '',
+    sort: sort ?? '',
+  };
 }
 
 /** Writes only the params that differ from the defaults, so the plain catalog URL stays clean. */
@@ -37,6 +51,7 @@ export function paramsToSearch(params: CatalogParams): string {
   if (params.pageSize !== DEFAULT_PARAMS.pageSize) search.set('pageSize', String(params.pageSize));
   if (params.q) search.set('q', params.q);
   if (params.category) search.set('category', params.category);
+  if (params.stockStatus) search.set('stockStatus', params.stockStatus);
   if (params.sort) search.set('sort', params.sort);
 
   return search.toString();
