@@ -264,7 +264,7 @@ function operationSpecs(): OperationSpec[] {
       summary: 'Get catalog stats',
       description:
         'Catalog-wide headline numbers: the product count by stock status and the value of the ' +
-        'stock on hand (`price * stock`, rounded to 2 decimals). Not scoped by search or ' +
+        'stock on hand (`price * stock`, summed exactly in cents). Not scoped by search or ' +
         'category, so it stays a stable overview. The stock bands are the ones the ' +
         '`stockStatus` list filter uses.',
       success: { status: '200', description: 'The catalog stats.', schema: 'ProductStatsResponse' },

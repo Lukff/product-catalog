@@ -1,9 +1,8 @@
 <script lang="ts">
-  import type { ProductStats, StockStatus } from '@catalog/shared';
+  import { formatMoney, type ProductStats, type StockStatus } from '@catalog/shared';
   import { catalog } from '../lib/stores/catalog.svelte.js';
   import { stats } from '../lib/stores/stats.svelte.js';
 
-  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const integer = new Intl.NumberFormat('en-US');
 
   const numbers = $derived(stats.stats);
@@ -60,7 +59,7 @@
     <div class="rounded-lg border border-slate-200 bg-white p-3">
       <p class="text-xs font-medium text-slate-600">Inventory value</p>
       <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
-        {numbers ? currency.format(numbers.inventoryValue) : '—'}
+        {numbers ? formatMoney(numbers.inventoryValue) : '—'}
       </p>
     </div>
   </div>

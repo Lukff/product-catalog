@@ -1,4 +1,4 @@
-import { productSchema, zodIssuesToDetails, type Product } from '@catalog/shared';
+import { productSchema, toCents, zodIssuesToDetails, type Product } from '@catalog/shared';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Db } from './client.js';
@@ -88,7 +88,7 @@ export function seedDatabase(db: Db, data: Product[]): SeedResult {
         title: product.title,
         description: product.description,
         categoryId,
-        price: product.price,
+        priceCents: toCents(product.price),
         stock: product.stock,
         brandId,
         sku: product.sku,

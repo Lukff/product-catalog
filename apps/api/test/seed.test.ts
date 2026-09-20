@@ -175,12 +175,12 @@ describe('seedDatabase', () => {
 
   it('never overwrites an edit made to a seeded product', () => {
     seedDatabase(testDb.db, data);
-    testDb.db.update(products).set({ price: 1.11, stock: 7 }).where(eq(products.id, 1)).run();
+    testDb.db.update(products).set({ priceCents: 111, stock: 7 }).where(eq(products.id, 1)).run();
 
     seedDatabase(testDb.db, data);
 
     const row = testDb.db.select().from(products).where(eq(products.id, 1)).get();
-    expect(row).toMatchObject({ price: 1.11, stock: 7 });
+    expect(row).toMatchObject({ priceCents: 111, stock: 7 });
   });
 
   it('restores a seeded product that was deleted', () => {
@@ -203,7 +203,7 @@ describe('seedDatabase', () => {
         title: 'Mine',
         description: 'Added by hand.',
         categoryId: misc.id,
-        price: 1,
+        priceCents: 100,
         stock: 1,
         brandId: me.id,
         sku: 'MINE-1',

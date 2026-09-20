@@ -453,6 +453,35 @@ Web:
   them by accessible name; `pnpm typecheck`, `pnpm lint` and `pnpm test` stay green.
 - Out of scope: an icon set for the whole app, custom SVG assets, animations.
 
+### B-20 — Money handling
+
+**Status:** Done
+**Depends on:** B-03, B-12
+
+Today `price` is a floating-point number end to end, kept to 2 decimals only by a
+validation rule. Sums such as `inventoryValue` (B-12) and any future arithmetic
+inherit binary floating-point error. Replace this with a representation that is exact.
+The approach below was confirmed and implemented; `technical-decisions.md` (§4) was
+updated in the same change.
+
+- Store `price` as an integer count of minor units (cents) in SQLite; migration
+  converts existing rows and `pnpm db:migrate` works from a clean checkout.
+- The wire contract stays the brief's decimal number (e.g. `19.99`), so the
+  brief's payload shape is unchanged. Conversion happens at one boundary — a small
+  `Money` helper in `packages/shared` — and nowhere else.
+- All arithmetic (`inventoryValue`, sorting by price) uses the integer form; no
+  floating-point sums.
+- Validation still rejects more than 2 decimal places and negatives, and never
+  rounds. It must also reject values that lose precision in the conversion.
+- One shared formatter for display, used by the table, detail modal, form and
+  metric strip, instead of ad hoc `toFixed`.
+- Seed data and `pnpm db:seed` stay idempotent.
+- Tests: unit tests for the helper on awkward values (`0.1 + 0.2`, `1.005`, large
+  values, `0`); an integration test that `inventoryValue` is exact for a set of
+  products whose float sum would drift; a round-trip test through create and read.
+- Decided: currency stays implicit (single currency, USD); a currency field is out of
+  scope.
+
 ---
 
 ## Renumbering (2026-09-19)

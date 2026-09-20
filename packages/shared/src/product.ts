@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isMoney } from './money.js';
 
 const CATEGORY_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -22,17 +23,12 @@ export const brandNameSchema = text(100).refine(
   'must not contain "/"',
 );
 
-const hasAtMostTwoDecimals = (value: number) => Number(value.toFixed(2)) === value;
-
 /** Fields a client supplies when creating or replacing part of a product. */
 const editableFields = {
   title: text(200),
   description: z.string().min(1, 'is required').max(2000, 'must be at most 2000 characters'),
   category: categorySlugSchema,
-  price: z
-    .number()
-    .min(0, 'must be >= 0')
-    .refine(hasAtMostTwoDecimals, 'must have at most 2 decimal places'),
+  price: z.number().min(0, 'must be >= 0').refine(isMoney, 'must have at most 2 decimal places'),
   stock: z.number().int('must be an integer').min(0, 'must be >= 0'),
   brand: brandNameSchema,
   sku: text(64),

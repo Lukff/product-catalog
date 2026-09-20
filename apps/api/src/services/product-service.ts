@@ -1,5 +1,7 @@
 import {
+  fromCents,
   parseSort,
+  toCents,
   type CreateProductInput,
   type ListQuery,
   type PageMeta,
@@ -10,10 +12,10 @@ import {
 import { ConflictError, NotFoundError, ValidationError } from '../errors.js';
 import type { ProductRecord, ProductRepository } from '../repositories/product-repository.js';
 
-/** Re-nests the flat timestamp columns as `meta`, the shape the brief's payload uses. */
+/** Re-nests the flat timestamp columns as `meta` and turns stored cents into the decimal `price`. */
 export function toProduct(record: ProductRecord): Product {
-  const { createdAt, updatedAt, ...fields } = record;
-  return { ...fields, meta: { createdAt, updatedAt } };
+  const { createdAt, updatedAt, priceCents, ...fields } = record;
+  return { ...fields, price: fromCents(priceCents), meta: { createdAt, updatedAt } };
 }
 
 export function createProductService(
@@ -53,7 +55,7 @@ export function createProductService(
         title: input.title,
         description: input.description,
         categoryId,
-        price: input.price,
+        priceCents: toCents(input.price),
         stock: input.stock,
         brandId,
         sku: input.sku,
@@ -67,7 +69,7 @@ export function createProductService(
     update(id: number, patch: PatchProductInput): Product {
       if (!repository.findById(id)) throw new NotFoundError(`Product ${id} not found`);
 
-      const { category, brand, ...fields } = patch;
+      const { category, brand, price, ...fields } = patch;
       let categoryId: number | undefined;
       if (category !== undefined) {
         categoryId = repository.findCategoryId(category);
@@ -92,7 +94,13 @@ export function createProductService(
         ]);
       }
 
-      repository.update(id, { ...fields, categoryId, brandId, updatedAt: now().toISOString() });
+      repository.update(id, {
+        ...fields,
+        priceCents: price === undefined ? undefined : toCents(price),
+        categoryId,
+        brandId,
+        updatedAt: now().toISOString(),
+      });
       return get(id);
     },
 
@@ -100,7 +108,10 @@ export function createProductService(
       if (!repository.delete(id)) throw new NotFoundError(`Product ${id} not found`);
     },
 
-    stats: (): ProductStats => repository.stats(),
+    stats(): ProductStats {
+      const { inventoryValueCents, ...counts } = repository.stats();
+      return { ...counts, inventoryValue: fromCents(inventoryValueCents) };
+    },
 
     list({ page, pageSize, q, category, brand, stockStatus, sort }: ListQuery): {
       data: Product[];

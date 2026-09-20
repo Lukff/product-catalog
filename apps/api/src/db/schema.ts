@@ -20,7 +20,8 @@ export const products = sqliteTable(
     categoryId: integer('category_id')
       .notNull()
       .references(() => categories.id, { onDelete: 'restrict' }),
-    price: real('price').notNull(),
+    // Integer cents; the wire contract exposes a decimal `price` (see `Money` in packages/shared).
+    priceCents: integer('price_cents').notNull(),
     stock: integer('stock').notNull(),
     // The wire contract exposes the brand's name; storage is a foreign key.
     brandId: integer('brand_id')

@@ -19,7 +19,7 @@ function productRow(
     title: 'Large Flux Capacitor',
     description: 'Provides the maximum motive force.',
     categoryId,
-    price: 9.99,
+    priceCents: 999,
     stock: 42,
     brandId,
     sku: 'ACM-FC-001',
@@ -84,7 +84,7 @@ describe('schema and migrations', () => {
         'title',
         'description',
         'category_id',
-        'price',
+        'price_cents',
         'stock',
         'brand_id',
         'sku',
@@ -119,7 +119,7 @@ describe('schema and migrations', () => {
       id: expect.any(Number),
       categoryId: category.id,
       brandId: brand.id,
-      price: 9.99,
+      priceCents: 999,
       sku: 'ACM-FC-001',
       createdAt: NOW,
       updatedAt: NOW,
@@ -270,6 +270,51 @@ describe('brands migration', () => {
           .all()
           .map((brand) => brand.name),
       ).toEqual(['ACME', 'Globex']);
+      expect(db.$client.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+      db.$client.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('price_cents migration', () => {
+  const migrationSql = (file: string) =>
+    readFileSync(fileURLToPath(new URL(`../src/db/migrations/${file}`, import.meta.url)), 'utf8')
+      .split('--> statement-breakpoint')
+      .map((statement) => statement.trim())
+      .filter(Boolean);
+
+  it('converts each stored decimal price to exact integer cents', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'catalog-test-'));
+
+    try {
+      const db = createDb(join(dir, 'legacy.db'));
+      const run = (sql: string) => db.$client.exec(sql);
+      migrationSql('0000_melted_sir_ram.sql').forEach(run);
+      run("INSERT INTO categories (slug) VALUES ('automotive')");
+      migrationSql('0001_brands.sql').forEach(run);
+      run("INSERT INTO brands (name) VALUES ('ACME')");
+      // 0.29 and 1.15 are the classic values where price * 100 is not an integer in floating point.
+      [0, 0.29, 1.15, 19.99, 1234.5].forEach((price, index) =>
+        run(
+          `INSERT INTO products (id, title, description, category_id, price, stock, brand_id, sku, weight, created_at, updated_at)
+           VALUES (${index + 1}, 'Item', 'Old row.', 1, ${price}, 7, 1, 'SKU-${index}', 1, '${NOW}', '${NOW}')`,
+        ),
+      );
+
+      migrationSql('0002_price_cents.sql').forEach(run);
+
+      const stored = db.$client
+        .prepare('SELECT price_cents, typeof(price_cents) AS type FROM products ORDER BY id')
+        .all();
+      expect(stored).toEqual([
+        { price_cents: 0, type: 'integer' },
+        { price_cents: 29, type: 'integer' },
+        { price_cents: 115, type: 'integer' },
+        { price_cents: 1999, type: 'integer' },
+        { price_cents: 123450, type: 'integer' },
+      ]);
       expect(db.$client.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
       db.$client.close();
     } finally {
