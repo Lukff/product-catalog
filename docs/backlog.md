@@ -143,7 +143,7 @@ Web:
 
 ### B-07 — Product detail and create product
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-06, B-08
 
 Merged 2026-09-20 from the former B-07 (product detail) and B-09 (create product), so the
@@ -229,6 +229,7 @@ API:
 
 Web:
 
+- The detail modal's Edit and Delete buttons already exist, disabled (B-07); enable and wire them.
 - Edit reuses `ProductForm` pre-filled from the record — no second form
   component.
 - Only changed fields are sent.
