@@ -72,3 +72,24 @@ backend and frontend became separate items rather than one item per slice. I wan
 to break the tasks first because it makes it easier for working later in specific
 sessions. The result is 24 items in six phases plus `D-1` and `D-2` recorded as
 gating decisions rather than work items.
+
+## 2026-09-19 — Monorepo scaffold, pnpm and dependency audit
+
+**Context:** `docs/technical-decisions.md` and the phased backlog were agreed, but no
+code existed. This serves backlog item B-01 (monorepo scaffold) and pulls in the
+CI item B-22, whose dependency on B-01 was now met.
+
+**Tooling & prompts:** Claude Code on Sonnet 5 at medium effort, with the prompt
+"let's start the scaffolding, take the task from the backlog". The model read
+`docs/backlog.md` and `docs/technical-decisions.md` first, then wrote the scaffold
+directly rather than brainstorming, since the contracts were already fixed in the
+documents.
+
+**What happened:** I did the general scaffolding for the project and added a pnpm
+audit as a check. The model began installing with npm; I rejected that call and had
+pnpm put in as a decision first, so the docs were updated before the code. I chose
+pnpm because I have previous experience with it and find the package resolution to
+be better. The audit is for adding a layer of security on the packages: the
+pre-commit hook is for convenience, and CI is the real barrier. Along the way,
+TypeScript 7 broke `typescript-eslint` (lint crashed), so the model pinned
+TypeScript to 6.0.x and recorded the pin in the technical-decisions document.

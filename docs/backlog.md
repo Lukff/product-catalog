@@ -43,15 +43,17 @@ problem, persona and rationale.
 
 ### B-01 — Monorepo scaffold
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** —
 
-- npm workspaces root with `apps/api`, `apps/web`, `packages/shared` per
+- pnpm workspaces root (`pnpm-workspace.yaml`, `packageManager` pinned) with `apps/api`, `apps/web`, `packages/shared` per
   `technical-decisions.md` §2.
-- Shared TypeScript config; `npm run typecheck` passes on an empty tree.
-- Lint and format configured; `npm run lint` passes.
+- Shared TypeScript config; `pnpm typecheck` passes on an empty tree.
+- Lint and format configured; `pnpm lint` passes.
 - Root scripts present: `dev`, `test`, `typecheck`, `lint`, `db:migrate`,
   `db:seed`.
+- Husky pre-commit hook runs `pnpm audit`, installed by the root `prepare`
+  script.
 
 ### B-02 — Shared contract package
 
@@ -78,7 +80,7 @@ problem, persona and rationale.
   `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `INTERNAL_ERROR`.
 - Unknown route returns `404 NOT_FOUND` in the envelope, not Hono's default.
 - Drizzle schema for `products` with flat `created_at` / `updated_at` columns and
-  a unique index on `sku`; migration generated and `npm run db:migrate` works
+  a unique index on `sku`; migration generated and `pnpm db:migrate` works
   from a clean checkout.
 - `routes -> services -> repositories` directories exist and the layering rule
   holds.
@@ -92,7 +94,7 @@ problem, persona and rationale.
   the brief's exact payload shape.
 - Some rows have deliberately low or zero stock so filters and metrics have
   something to show.
-- `npm run db:seed` is idempotent — running it twice leaves the same row count.
+- `pnpm db:seed` is idempotent — running it twice leaves the same row count.
 
 ### B-05 — Web scaffold
 
@@ -103,7 +105,7 @@ problem, persona and rationale.
 - Dev proxy `/api` to `http://localhost:3000`, so no CORS config in development.
 - `lib/api.ts` is a typed fetch wrapper that unwraps `data`, surfaces the error
   envelope as a typed rejection, and imports its types from `packages/shared`.
-- `npm run dev` from the root starts both apps.
+- `pnpm dev` from the root starts both apps.
 
 ---
 
@@ -295,11 +297,12 @@ problem, persona and rationale.
 
 ### B-22 — CI workflow
 
-**Status:** Todo
+**Status:** In progress — workflow written, not yet run on GitHub
 **Depends on:** B-01
 
 - `.github/workflows/ci.yml` runs on push and pull request.
-- Steps: `npm ci`, `tsc --noEmit`, lint, `vitest run`.
+- Steps: `pnpm install --frozen-lockfile`, `tsc --noEmit`, lint, `vitest run`,
+  `pnpm audit`.
 - Green on a clean checkout of `main`.
 
 ### B-23 — README

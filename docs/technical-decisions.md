@@ -12,25 +12,29 @@ Reference document for the Full Stack Product Catalog. It records **what** we bu
 
 | Concern | Decision | Rationale |
 |---|---|---|
-| Language | TypeScript end-to-end (Node 20+) | One language across API and SPA; types shared instead of duplicated. |
+| Language | TypeScript end-to-end (Node 20+), pinned to 6.0.x | One language across API and SPA; types shared instead of duplicated. Held below 7 because `typescript-eslint` 8.x supports `<6.1.0` only; revisit when it ships TS 7 support. |
+| Package manager | pnpm (workspaces) | Strict, symlinked `node_modules` prevents phantom dependencies between workspaces; fast, disk-efficient installs; first-class workspace support. Pinned via the `packageManager` field so Corepack gives every developer and CI the same version. |
+| Lint / format | ESLint (flat config, `typescript-eslint`) + Prettier | Standard, widely understood toolchain; `eslint-plugin-svelte` and `prettier-plugin-svelte` slot in when the web app is scaffolded. |
 | Backend router | Hono | Tiny, fast, standard `Request`/`Response`, first-class testability (`app.request()` needs no live port). |
 | Validation | Zod | A single schema drives runtime validation, inferred TS types, and client-side form validation. |
-| Database | SQLite (file-based, `better-sqlite3`) | `npm start` works with zero external services; still a real relational DB. |
+| Database | SQLite (file-based, `better-sqlite3`) | `pnpm start` works with zero external services; still a real relational DB. |
 | DB access | Drizzle ORM | Typed queries, migrations, and a schema file that doubles as data-model documentation. Swappable to Postgres later. |
 | Frontend | Svelte 5 + Vite | Minimal boilerplate, runes cover all state needs without a state library, fast builds. |
 | Styling | Tailwind CSS | Consistent, polished UI without hand-rolling a design system. |
 | Tests | Vitest | One runner for unit and integration tests across workspaces. |
 | CI | GitHub Actions | Single workflow; required by the brief. |
+| Dependency audit | `pnpm audit`, in CI and a Husky pre-commit hook | Known-vulnerable dependencies are caught before they reach the repo and again on every push. Husky installs the hook through the root `prepare` script, so `pnpm install` is the only setup step. |
 
-Rejected: Docker + Postgres (setup cost vs. time budget), JSON-file persistence (hand-rolled filtering/paging, less production-minded), SvelteKit (SSR surface this SPA does not need), React/Vue (no advantage once Svelte was chosen).
+Rejected: Docker + Postgres (setup cost vs. time budget), JSON-file persistence (hand-rolled filtering/paging, less production-minded), SvelteKit (SSR surface this SPA does not need), React/Vue (no advantage once Svelte was chosen), npm workspaces (hoisted `node_modules` lets a workspace import a package it never declared; pnpm makes that a hard error).
 
 ## 2. Repository structure
 
-npm workspaces monorepo - one `npm install`, one source of truth for the API contract.
+pnpm workspaces monorepo (`pnpm-workspace.yaml`) - one `pnpm install`, one source of truth for the API contract. Workspace packages are named `@catalog/api`, `@catalog/web` and `@catalog/shared`, and depend on each other with the `workspace:*` protocol.
 
 ```
 product-catalog/
-  package.json            workspaces + root scripts (dev, test, lint, typecheck)
+  package.json            root scripts (dev, test, lint, typecheck) + packageManager pin
+  pnpm-workspace.yaml     workspace globs
   apps/
     api/                  Hono server
       src/
@@ -131,7 +135,7 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 
 **Server-owned fields:** `id` and both timestamps are ignored if a client sends them. Integer ids were kept over UUIDs because the brief's sample payload uses them and insertion order stays meaningful.
 
-**Seeding:** `apps/api/src/db/seed.ts` loads `seed.json` (~30-40 products across several categories and brands, some with deliberately low or zero stock so filters and metrics have something to show). Run via `npm run db:seed`; idempotent, safe to re-run.
+**Seeding:** `apps/api/src/db/seed.ts` loads `seed.json` (~30-40 products across several categories and brands, some with deliberately low or zero stock so filters and metrics have something to show). Run via `pnpm db:seed`; idempotent, safe to re-run.
 
 ## 5. SPA design
 
@@ -160,7 +164,9 @@ A single dashboard view plus a detail modal - the catalog is one workflow, so na
 
 **Unit tests:** query-param parsing (page/pageSize/sort coercion and bounds) and the shared Zod schemas.
 
-**CI:** `.github/workflows/ci.yml` on push and pull request - `npm ci` -> `tsc --noEmit` -> lint -> `vitest run`.
+**CI:** `.github/workflows/ci.yml` on push and pull request - `pnpm install --frozen-lockfile` -> `tsc --noEmit` -> lint -> `vitest run` -> `pnpm audit`.
+
+**Pre-commit hook:** `.husky/pre-commit` runs `pnpm audit`. It needs network access to the registry, so a commit made offline fails; bypass with `git commit --no-verify` only when offline, and CI still enforces the audit.
 
 Playwright end-to-end coverage is deliberately out of scope for the initial window and is documented as a next step in `README.md`.
 
@@ -174,7 +180,8 @@ Both must be resolved before the affected code is written. However they land, th
 ## 8. Conventions
 
 - Local dev: API on `:3000`, Vite dev server on `:5173` proxying `/api` - no CORS config needed in development.
-- Root scripts: `npm run dev` (both apps), `npm test`, `npm run typecheck`, `npm run lint`, `npm run db:migrate`, `npm run db:seed`.
+- Root scripts: `pnpm dev` (both apps), `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm db:migrate`, `pnpm db:seed`.
+- pnpm is the only supported package manager: the version is pinned in the root `packageManager` field (enable with `corepack enable`), and only `pnpm-lock.yaml` is committed.
 - Config via environment variables with sane defaults (`PORT`, database file path, and a low-stock threshold if applicable); `.env.example` committed.
 - No authentication or authorization in this scope; noted as a next step.
 - Commits are small, single-line, and use a Conventional Commits prefix (`feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`). No message body, no footers, never a `Co-Authored-By` trailer.
