@@ -117,7 +117,7 @@ problem, persona and rationale.
 
 ### B-06 — List products
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03, B-04, B-05
 
 API:
@@ -128,6 +128,7 @@ API:
 - `meta.total` is the count after filters and before pagination;
   `meta.totalPages` is consistent with it.
 - Integration test asserts the default page size and the `meta` values.
+- Scope note: B-06 applies `page` and `pageSize` only, ordered by `id`. `q`, `category` and `sort` are validated by the shared schema but take effect in B-08.
 
 Web:
 
@@ -174,6 +175,7 @@ API:
   correct `meta.total`.
 - Integration tests cover case-insensitive description match, `-price` ordering
   and the rejected sort field.
+- Replaces B-06's fixed `id` order and applies `q`, `category` and `sort` in the repository.
 
 Web:
 
