@@ -1,5 +1,7 @@
 <script lang="ts">
   import { stockStatus, type Product, type StockStatus } from '@catalog/shared';
+  import PencilIcon from '@lucide/svelte/icons/pencil';
+  import Trash2Icon from '@lucide/svelte/icons/trash-2';
   import type { ApiError } from '../lib/api.js';
   import type { DetailStatus } from '../lib/stores/product-dialog.svelte.js';
 
@@ -85,18 +87,22 @@
 <div class="mt-6 flex justify-end gap-3">
   <button
     type="button"
-    class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
+    class="inline-flex items-center rounded-md border border-slate-300 bg-white p-2 text-sm disabled:opacity-50"
+    aria-label="Edit"
+    title="Edit"
     disabled={status === 'loading'}
     onclick={onedit}
   >
-    Edit
+    <PencilIcon size={16} aria-hidden="true" />
   </button>
   <button
     type="button"
-    class="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm text-red-700 disabled:opacity-50"
+    class="inline-flex items-center rounded-md border border-red-300 bg-white p-2 text-sm text-red-700 disabled:opacity-50"
+    aria-label="Delete"
+    title="Delete"
     disabled={status === 'loading'}
     onclick={ondelete}
   >
-    Delete
+    <Trash2Icon size={16} aria-hidden="true" />
   </button>
 </div>

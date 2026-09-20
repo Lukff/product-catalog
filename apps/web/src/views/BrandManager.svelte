@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Trash2Icon from '@lucide/svelte/icons/trash-2';
   import Modal from '../components/Modal.svelte';
   import { brands } from '../lib/stores/brands.svelte.js';
 
@@ -52,12 +53,13 @@
             <span class="break-all text-slate-900">{existing}</span>
             <button
               type="button"
-              class="rounded-md border border-slate-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-60"
+              class="inline-flex items-center rounded-md border border-slate-300 p-1.5 text-red-700 hover:bg-red-50 disabled:opacity-60"
               aria-label={`Remove ${existing}`}
+              title={`Remove ${existing}`}
               disabled={brands.pending}
               onclick={() => void brands.remove(existing)}
             >
-              Remove
+              <Trash2Icon size={14} aria-hidden="true" />
             </button>
           </li>
         {/each}

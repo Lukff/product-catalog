@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import XIcon from '@lucide/svelte/icons/x';
 
   let { title, onclose, children }: { title: string; onclose: () => void; children: Snippet } =
     $props();
@@ -29,11 +30,12 @@
       <h2 id="modal-title" class="text-lg font-semibold break-words text-slate-900">{title}</h2>
       <button
         type="button"
-        class="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
+        class="inline-flex items-center rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
         aria-label="Close"
+        title="Close"
         onclick={() => dialog.close()}
       >
-        ✕
+        <XIcon size={16} aria-hidden="true" />
       </button>
     </div>
     <div class="mt-4">{@render children()}</div>

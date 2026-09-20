@@ -9,7 +9,8 @@
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@catalog/shared": "workspace:*"
+    "@catalog/shared": "workspace:*",
+    "@lucide/svelte": "^1.47.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
