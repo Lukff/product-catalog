@@ -5,6 +5,8 @@
   import ProductTable from '../components/ProductTable.svelte';
   import { paramsFromSearch, paramsToSearch } from '../lib/query-params.js';
   import { catalog } from '../lib/stores/catalog.svelte.js';
+  import { productDialog } from '../lib/stores/product-dialog.svelte.js';
+  import ProductDialog from './ProductDialog.svelte';
 
   // A shared link opens straight onto its query.
   catalog.params = paramsFromSearch(location.search);
@@ -42,7 +44,16 @@
 </script>
 
 <section aria-labelledby="products-heading">
-  <h2 id="products-heading" class="text-lg font-semibold text-slate-900">Products</h2>
+  <div class="flex items-center justify-between gap-4">
+    <h2 id="products-heading" class="text-lg font-semibold text-slate-900">Products</h2>
+    <button
+      type="button"
+      class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+      onclick={() => productDialog.openCreate()}
+    >
+      New product
+    </button>
+  </div>
 
   <div class="mt-4">
     <Filters />
@@ -93,7 +104,10 @@
         class={catalog.status === 'loading' ? 'opacity-60 transition-opacity' : ''}
         aria-busy={catalog.status === 'loading'}
       >
-        <ProductTable products={catalog.products} />
+        <ProductTable
+          products={catalog.products}
+          onselect={(product) => void productDialog.openDetail(product)}
+        />
       </div>
       {#if range}
         <p class="mt-3 text-sm text-slate-600" role="status">
@@ -105,4 +119,6 @@
       {/if}
     {/if}
   </div>
+
+  <ProductDialog />
 </section>

@@ -5,7 +5,10 @@ import { productIdParamSchema } from '../src/index.js';
 function failure(id: string) {
   const result = productIdParamSchema.safeParse({ id });
   if (result.success) throw new Error(`expected "${id}" to be rejected`);
-  return result.error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }));
+  return result.error.issues.map((issue) => ({
+    path: issue.path.join('.'),
+    message: issue.message,
+  }));
 }
 
 describe('productIdParamSchema', () => {
