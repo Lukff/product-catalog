@@ -100,7 +100,8 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/products` | Paginated. Query: `page`, `pageSize`, `q`, `category`, `sort`. |
+| GET | `/api/products` | Paginated. Query: `page`, `pageSize`, `q`, `category`, `stockStatus`, `sort`. |
+| GET | `/api/products/stats` | Extended endpoint; catalog-wide `total`, `inStock`, `lowStock`, `outOfStock`, `inventoryValue`. Registered before `/:id`. |
 | GET | `/api/products/:id` | `404 NOT_FOUND` if absent. |
 | POST | `/api/products` | Full body; server assigns `id` and both timestamps. `201`. |
 | PATCH | `/api/products/:id` | Any subset of fields; refreshes `meta.updatedAt`. `200`. |
@@ -191,7 +192,7 @@ Run via `pnpm db:seed`, which applies pending migrations first, so a fresh check
 
 A single dashboard view plus a detail modal - the catalog is one workflow, so navigation stays flat.
 
-- **Metric strip** - headline counts over the catalog (exact contents depend on open decision #2).
+- **Metric strip** - four tiles from `GET /api/products/stats`: Total, Low stock, Out of stock and Inventory value. The Low and Out tiles toggle the `stockStatus` filter (clicking the active tile clears it) and the strip refetches after a create, edit or delete.
 - **Toolbar** - debounced search box, category select, sort select, page-size select.
 - **Product table** - paginated rows with inline stock status; clicking a row opens the detail modal. Stock status is derived, not sent by the API: `stockStatus()` in `packages/shared` returns `out` at 0, `low` from 1 to `LOW_STOCK_THRESHOLD` (5, matching the seed), otherwise `in`.
 - **Detail modal and dialog store** - the modal is a native `<dialog>` (`showModal()`), which supplies Escape-to-close, the focus trap, and focus restoration to the opener automatically. Opening a row shows the list's data immediately and refreshes it in the background from `GET /api/products/:id` (`ProductDialogStore` in `lib/stores/product-dialog.svelte.ts`). Edit and Delete work inside the same modal (`detail` -> `edit` / `delete` -> back to `detail`), waiting for the detail refresh so edits start from the server's copy.
@@ -225,9 +226,9 @@ Playwright end-to-end coverage is deliberately out of scope for the initial wind
 ## 7. Open decisions
 
 1. **Category modelling - resolved 2026-09-19: option (a), a `categories` table with `products.category_id` FK.** It makes create/list/filter-by-category honest and prevents typo'd categories, and the database enforces it. Rejected: (b) a plain text column with `DISTINCT` - no validation, and a category cannot exist before a product uses it, so "create a category" would be hollow; (c) a registry table with no FK - allows a product to drift onto an unregistered slug. A variant using the slug itself as the primary key (`products.category` referencing `categories(slug)`) would have avoided the join, but the surrogate-id form was chosen. The API exposes `category` as a string slug either way, so the wire contract is unchanged; the cost is a join (or subquery) on category reads and filters, and a service-level check that a slug exists before a product write.
-2. **Unprompted custom feature** (the brief requires at least one, documented with problem, persona and rationale). Candidates: low-stock alerts with inventory metrics, an audit log of mutations, bulk operations, or CSV import/export. The choice also determines the contents of the SPA metric strip.
+2. **Unprompted custom feature - resolved 2026-09-20: low-stock alerts with inventory metrics.** Problem: a stock manager cannot see at a glance what needs reordering. Persona: the stock manager. Delivered as `GET /api/products/stats` (`total`, `inStock`, `lowStock`, `outOfStock`, `inventoryValue`), a `stockStatus=low|out|in` filter on `GET /api/products`, and a metric strip whose Low and Out tiles toggle that filter. Stats are global, not scoped to the toolbar's search or category, so the strip stays a stable overview. The `low` and `out` predicates use `LOW_STOCK_THRESHOLD` from `packages/shared`, so the SQL cannot drift from `stockStatus()`. Chosen because it is the cheapest option (one aggregate query, no new table or migration), it reuses the existing stock rule and it fills the metric strip directly. Rejected: an audit log (no auth, so "who" is meaningless, and it needs a table plus a write in every mutation), bulk operations (transactional and partial-failure semantics, the most UI work) and CSV export (little value, and the metric strip would still need content). Out of scope: configurable thresholds, notifications, history.
 
-The remaining decision (#2) must be resolved before the code it affects is written. However it lands, this document and `README.md` get updated with the reasoning.
+All open decisions are resolved. This document and `README.md` carry the reasoning.
 
 ## 8. Conventions
 
