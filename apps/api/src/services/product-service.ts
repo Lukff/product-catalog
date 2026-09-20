@@ -3,6 +3,7 @@ import {
   type CreateProductInput,
   type ListQuery,
   type PageMeta,
+  type PatchProductInput,
   type Product,
 } from '@catalog/shared';
 import { ConflictError, NotFoundError, ValidationError } from '../errors.js';
@@ -53,6 +54,29 @@ export function createProductService(
         createdAt: timestamp,
         updatedAt: timestamp,
       });
+      return get(id);
+    },
+
+    update(id: number, patch: PatchProductInput): Product {
+      if (!repository.findById(id)) throw new NotFoundError(`Product ${id} not found`);
+
+      const { category, ...fields } = patch;
+      let categoryId: number | undefined;
+      if (category !== undefined) {
+        categoryId = repository.findCategoryId(category);
+        if (categoryId === undefined) {
+          throw new ValidationError('Invalid product payload', [
+            { path: 'category', message: `"${category}" is not an existing category` },
+          ]);
+        }
+      }
+      if (fields.sku !== undefined && repository.skuExists(fields.sku, id)) {
+        throw new ConflictError(`A product with SKU "${fields.sku}" already exists`, [
+          { path: 'sku', message: 'is already in use' },
+        ]);
+      }
+
+      repository.update(id, { ...fields, categoryId, updatedAt: now().toISOString() });
       return get(id);
     },
 

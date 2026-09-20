@@ -1,5 +1,5 @@
 import type { ParsedSort, SortField } from '@catalog/shared';
-import { and, asc, count, desc, eq, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ne, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { categories, products } from '../db/schema.js';
 
@@ -28,6 +28,18 @@ export interface NewProduct {
   sku: string;
   weight: number;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductChanges {
+  title?: string | undefined;
+  description?: string | undefined;
+  categoryId?: number | undefined;
+  price?: number | undefined;
+  stock?: number | undefined;
+  brand?: string | undefined;
+  sku?: string | undefined;
+  weight?: number | undefined;
   updatedAt: string;
 }
 
@@ -116,11 +128,25 @@ export function createProductRepository(db: Db) {
         .get()?.id;
     },
 
-    skuExists(sku: string): boolean {
+    /** True when a product other than `exceptId` (when given) already uses this sku. */
+    skuExists(sku: string, exceptId?: number): boolean {
       return (
-        db.select({ id: products.id }).from(products).where(eq(products.sku, sku)).get() !==
-        undefined
+        db
+          .select({ id: products.id })
+          .from(products)
+          .where(
+            and(
+              eq(products.sku, sku),
+              exceptId === undefined ? undefined : ne(products.id, exceptId),
+            ),
+          )
+          .get() !== undefined
       );
+    },
+
+    /** Writes the given columns (undefined ones are skipped). Returns whether a row matched. */
+    update(id: number, changes: ProductChanges): boolean {
+      return db.update(products).set(changes).where(eq(products.id, id)).run().changes > 0;
     },
 
     /** Inserts the row and returns its new id. */

@@ -58,6 +58,7 @@ const IMPLEMENTED_OPERATIONS = new Set([
   'GET /api/products',
   'GET /api/products/{id}',
   'POST /api/products',
+  'PATCH /api/products/{id}',
 ]);
 
 let testDb: TestDb;
