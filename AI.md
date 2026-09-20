@@ -144,3 +144,24 @@ prebuilt binaries, and I kept the pin because of the limited scope over changing
 machine configurations. Separately, the pre-commit `pnpm audit` blocked the first
 commits over an `esbuild` advisory reached through `drizzle-kit`, and the model
 fixed it with a scoped pnpm override instead of bypassing the hook.
+
+## 2026-09-19 — Seed data (B-04), plus .env loading and LF line endings
+
+**Context:** PR #3 (B-03, the API skeleton) was open with CI green. Three follow-ups
+were outstanding: two the model had raised when the PR opened (loading a `.env` file,
+and Windows CRLF line endings failing `pnpm lint`) and the seed data (B-04), which
+depended on B-03's schema and the D-1 category decision.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. I asked for the two follow-ups with
+"fix the 2 first points in this same PR" and for the seed with "add the seed here
+too". For the seed the model presented a design in chat first (no spec file) and
+built it test-first once I approved it with "yes, go ahead".
+
+**What happened:** I added all three to the same PR for simplicity. The model added
+a `.gitattributes` that forces LF endings, and a `.env` loader using Node's built-in
+`process.loadEnvFile()` instead of a new `dotenv` dependency, which raised the Node
+floor to 20.12. The seed is 36 products in the brief's payload shape, validated
+against the shared schema, inserted with `ON CONFLICT DO NOTHING` so re-running
+never overwrites edits. Along the way the model's first `.gitattributes` commit
+had also swept in a staged file rename; it re-split the unpushed history so each
+commit holds only its own change.

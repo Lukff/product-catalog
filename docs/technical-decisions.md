@@ -48,7 +48,7 @@ product-catalog/
         routes/           HTTP layer: parse, validate, serialize
         services/         business rules, timestamps, error mapping
         repositories/     Drizzle queries
-        db/               schema.ts, client.ts, migrate.ts, migrations/, seed.ts
+        db/               schema.ts, client.ts, migrate.ts, migrations/, seed.ts, seed.json
       drizzle.config.ts   drizzle-kit: generates SQL migrations from schema.ts
       .env.example        PORT and DATABASE_PATH defaults; copy to .env
       test/
@@ -157,7 +157,9 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 
 **Server-owned fields:** `id` and both timestamps are ignored if a client sends them. Integer ids were kept over UUIDs because the brief's sample payload uses them and insertion order stays meaningful.
 
-**Seeding:** `apps/api/src/db/seed.ts` loads `seed.json` (~30-40 products across several categories and brands, some with deliberately low or zero stock so filters and metrics have something to show). Run via `pnpm db:seed`; idempotent, safe to re-run.
+**Seeding:** `apps/api/src/db/seed.ts` loads `apps/api/src/db/seed.json`: 36 whimsical ACME-style products in the brief's exact payload shape (explicit ids `1..N` and nested `meta`; rows 1 and 2 are the brief's own samples, verbatim) across 6 categories and 5 fictional brands, with 5 out-of-stock and 7 low-stock (1-5) products so filters and metrics have something to show. Every row is validated with the shared `productSchema` before anything is inserted, so bad seed data fails loudly and cannot drift from the contract.
+
+Run via `pnpm db:seed`, which applies pending migrations first, so a fresh checkout needs only that command. It creates each distinct category slug, then inserts the products with `category_id` resolved from the slug, inside one transaction. Both inserts use `ON CONFLICT DO NOTHING`, so re-running is safe: row counts do not change, an edit you made to a seeded product is never overwritten, and a seeded row you deleted comes back. The consequence is that editing `seed.json` later does not update rows that already exist; to reset, delete the database file and run `pnpm db:seed` again. Rejected: upserting by `sku` (would clobber edits) and wipe-and-reload (would delete products you created).
 
 ## 5. SPA design
 

@@ -88,7 +88,7 @@ problem, persona and rationale.
 
 ### B-04 — Seed data
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-03
 
 - `seed.json` holds ~30–40 products across several categories and brands, using
