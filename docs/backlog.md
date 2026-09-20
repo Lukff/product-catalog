@@ -57,7 +57,7 @@ problem, persona and rationale.
 
 ### B-02 — Shared contract package
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-01
 
 - `packages/shared` exports the product Zod schema matching the field rules in

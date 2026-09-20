@@ -93,3 +93,27 @@ be better. The audit is for adding a layer of security on the packages: the
 pre-commit hook is for convenience, and CI is the real barrier. Along the way,
 TypeScript 7 broke `typescript-eslint` (lint crashed), so the model pinned
 TypeScript to 6.0.x and recorded the pin in the technical-decisions document.
+
+## 2026-09-19 — Shared contract package (B-02)
+
+**Context:** Scaffold (B-01) was done and `packages/shared` was an empty stub. This
+serves backlog item B-02: the product Zod schemas, list-query schema and response
+envelope types that the API and web app will both import.
+
+**Tooling & prompts:** Claude Code on Sonnet 5, prompted with "lets work on the next
+item". The model read the backlog, classified the task as architectural, and used
+the superpowers `brainstorming` skill, then `test-driven-development` for the build.
+It put three shaping choices to me as multiple-choice prompts: reject or clamp
+`pageSize` above 100, reject or round a price with more than 2 decimals, and how
+strict the `category` slug format should be.
+
+**What happened:** I chose to reject `pageSize` above 100 with a 400 instead of
+clamping it, because it is better to have explicit errors; that changed the
+"capped at 100" wording in §3.1 of `docs/technical-decisions.md`. I also chose to
+reject prices with more than 2 decimals rather than round them, and a lowercase slug
+regex for `category`. I skipped the separate spec file: I'll use it only for more
+involved work and as a temporary place, eventually everything must go into the other
+docs, so the decisions went straight into §3.1 and §4. The model wrote the tests
+first (29 failing for the right reason), then the implementation (53 passing).
+Partway through I introduced the rule of one branch per feature with a PR at the end,
+to start testing the CI (B-22, whose workflow was written but not yet run on GitHub).

@@ -78,7 +78,7 @@ Base path `/api`. JSON only. All list and single-resource responses are wrapped.
 - Single resource: `{ "data": { ... } }` - wrapped as well, for uniformity.
 - `meta` appears on collection responses only.
 - `total` is the count **after** filters and **before** pagination.
-- `pageSize` defaults to **30** (the brief's default limit) and is capped at 100.
+- `pageSize` defaults to **30** (the brief's default limit) and may not exceed 100: a larger value is rejected with `400 VALIDATION_ERROR`, not silently clamped. `page` must be an integer `>= 1`.
 - Page-based paging was chosen over offset/limit to support a numbered pager in the UI. Known trade-off: page numbers shift if rows are inserted between requests - acceptable for a single-user local catalog.
 
 ### 3.2 Endpoints
@@ -130,6 +130,14 @@ Product fields mirror the brief's payload exactly, so seed data loads unchanged.
 | `weight` | number | required, `> 0` |
 | `meta.createdAt` | ISO 8601 string | server-owned |
 | `meta.updatedAt` | ISO 8601 string | server-owned, refreshed on every PATCH |
+
+**Validation details** (defined once in `packages/shared`, so API and form messages match):
+
+- `title`, `brand` and `sku` are trimmed and non-empty, with maximum lengths of 200, 100 and 64. `description` is 1-2000 characters and is not trimmed.
+- `category` must be a lowercase slug (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 50 characters).
+- `price` is rejected if it has more than 2 decimal places; it is never rounded.
+- `PATCH` accepts any non-empty subset of the create fields; an empty body is a `400`.
+- `id` and `meta` are stripped from create and patch bodies rather than rejected.
 
 **Storage vs. wire shape:** `meta` is stored as flat `created_at` / `updated_at` columns and re-nested by a serializer at the route boundary. The brief's JSON shape is preserved without a nested-object column.
 
