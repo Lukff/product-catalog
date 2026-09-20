@@ -1,4 +1,3 @@
-// apps/web/src/lib/product-form.ts
 import {
   createProductSchema,
   zodIssuesToDetails,

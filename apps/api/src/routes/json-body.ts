@@ -1,4 +1,3 @@
-// apps/api/src/routes/json-body.ts
 import type { Context } from 'hono';
 import { ValidationError } from '../errors.js';
 

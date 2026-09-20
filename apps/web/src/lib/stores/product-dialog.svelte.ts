@@ -1,4 +1,3 @@
-// apps/web/src/lib/stores/product-dialog.svelte.ts
 import type { CreateProductInput, Product } from '@catalog/shared';
 import { api, ApiError } from '../api.js';
 import { catalog, type CatalogStore } from './catalog.svelte.js';
