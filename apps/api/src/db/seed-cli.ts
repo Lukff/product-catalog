@@ -16,7 +16,7 @@ try {
   const added = seedDatabase(db, data);
   const skipped = data.length - added.products;
   console.log(
-    `Seeded ${databasePath}: added ${added.products} products and ${added.categories} categories` +
+    `Seeded ${databasePath}: added ${added.products} products and ${added.categories} categories and ${added.brands} brands` +
       (skipped > 0 ? ` (${skipped} products were already present).` : '.'),
   );
 } finally {

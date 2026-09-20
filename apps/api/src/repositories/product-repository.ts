@@ -7,9 +7,9 @@ import {
 } from '@catalog/shared';
 import { and, asc, count, desc, eq, ne, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { categories, products } from '../db/schema.js';
+import { brands, categories, products } from '../db/schema.js';
 
-/** A stored product with its category resolved to the slug. Timestamps are still flat columns. */
+/** A stored product with its category resolved to the slug and its brand to the name. Timestamps are still flat columns. */
 export interface ProductRecord {
   id: number;
   title: string;
@@ -30,7 +30,7 @@ export interface NewProduct {
   categoryId: number;
   price: number;
   stock: number;
-  brand: string;
+  brandId: number;
   sku: string;
   weight: number;
   createdAt: string;
@@ -43,7 +43,7 @@ export interface ProductChanges {
   categoryId?: number | undefined;
   price?: number | undefined;
   stock?: number | undefined;
-  brand?: string | undefined;
+  brandId?: number | undefined;
   sku?: string | undefined;
   weight?: number | undefined;
   updatedAt: string;
@@ -56,6 +56,8 @@ export interface ListOptions {
   q?: string | undefined;
   /** Category slug. */
   category?: string | undefined;
+  /** Brand name. */
+  brand?: string | undefined;
   /** Only products in this stock band, as `stockStatus()` defines it. */
   stockStatus?: StockStatus | undefined;
   /** Defaults to id ascending. Ties always fall back to id, so paging is stable. */
@@ -102,8 +104,9 @@ function stockCondition(status: StockStatus): SQL {
 function whereClause({
   q,
   category,
+  brand,
   stockStatus,
-}: Pick<ListOptions, 'q' | 'category' | 'stockStatus'>): SQL | undefined {
+}: Pick<ListOptions, 'q' | 'category' | 'brand' | 'stockStatus'>): SQL | undefined {
   const conditions: (SQL | undefined)[] = [];
 
   if (q) {
@@ -116,6 +119,7 @@ function whereClause({
     );
   }
   if (category) conditions.push(eq(categories.slug, category));
+  if (brand) conditions.push(eq(brands.name, brand));
   if (stockStatus) conditions.push(stockCondition(stockStatus));
 
   return and(...conditions);
@@ -128,7 +132,7 @@ const productColumns = {
   category: categories.slug,
   price: products.price,
   stock: products.stock,
-  brand: products.brand,
+  brand: brands.name,
   sku: products.sku,
   weight: products.weight,
   createdAt: products.createdAt,
@@ -143,6 +147,7 @@ export function createProductRepository(db: Db) {
         .select(productColumns)
         .from(products)
         .innerJoin(categories, eq(products.categoryId, categories.id))
+        .innerJoin(brands, eq(products.brandId, brands.id))
         .where(eq(products.id, id))
         .get();
     },
@@ -154,6 +159,11 @@ export function createProductRepository(db: Db) {
         .from(categories)
         .where(eq(categories.slug, slug))
         .get()?.id;
+    },
+
+    /** The id of the brand with this name, or `undefined` when there is none. */
+    findBrandId(name: string): number | undefined {
+      return db.select({ id: brands.id }).from(brands).where(eq(brands.name, name)).get()?.id;
     },
 
     /** True when a product other than `exceptId` (when given) already uses this sku. */
@@ -208,8 +218,8 @@ export function createProductRepository(db: Db) {
     },
 
     /** One page of the products matching the filters, plus the total number of matches. */
-    list({ limit, offset, q, category, stockStatus, sort }: ListOptions): ProductPage {
-      const where = whereClause({ q, category, stockStatus });
+    list({ limit, offset, q, category, brand, stockStatus, sort }: ListOptions): ProductPage {
+      const where = whereClause({ q, category, brand, stockStatus });
       const orderBy = sort
         ? [(sort.direction === 'desc' ? desc : asc)(sortColumns[sort.field]), asc(products.id)]
         : [asc(products.id)];
@@ -218,6 +228,7 @@ export function createProductRepository(db: Db) {
         .select(productColumns)
         .from(products)
         .innerJoin(categories, eq(products.categoryId, categories.id))
+        .innerJoin(brands, eq(products.brandId, brands.id))
         .where(where)
         .orderBy(...orderBy)
         .limit(limit)
@@ -229,6 +240,7 @@ export function createProductRepository(db: Db) {
           .select({ total: count() })
           .from(products)
           .innerJoin(categories, eq(products.categoryId, categories.id))
+          .innerJoin(brands, eq(products.brandId, brands.id))
           .where(where)
           .get()?.total ?? 0;
 

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { categories, products } from '../src/db/schema.js';
+import { brands, categories, products } from '../src/db/schema.js';
 import { loadSeedData, parseSeedData, seedDatabase } from '../src/db/seed.js';
 import { createTestDb, type TestDb } from './helpers.js';
 
@@ -106,6 +106,7 @@ describe('parseSeedData', () => {
 describe('seedDatabase', () => {
   const data = loadSeedData();
   const distinctSlugs = new Set(data.map((product) => product.category));
+  const distinctBrands = new Set(data.map((product) => product.brand));
   let testDb: TestDb;
 
   beforeEach(() => {
@@ -113,14 +114,19 @@ describe('seedDatabase', () => {
   });
   afterEach(() => testDb.cleanup());
 
-  const countRows = (table: typeof products | typeof categories) =>
+  const countRows = (table: typeof products | typeof categories | typeof brands) =>
     testDb.db.select().from(table).all().length;
 
   it('inserts every category and product and reports what it added', () => {
     const result = seedDatabase(testDb.db, data);
 
-    expect(result).toEqual({ categories: distinctSlugs.size, products: data.length });
+    expect(result).toEqual({
+      categories: distinctSlugs.size,
+      brands: distinctBrands.size,
+      products: data.length,
+    });
     expect(countRows(categories)).toBe(distinctSlugs.size);
+    expect(countRows(brands)).toBe(distinctBrands.size);
     expect(countRows(products)).toBe(data.length);
   });
 
@@ -161,8 +167,9 @@ describe('seedDatabase', () => {
     seedDatabase(testDb.db, data);
     const second = seedDatabase(testDb.db, data);
 
-    expect(second).toEqual({ categories: 0, products: 0 });
+    expect(second).toEqual({ categories: 0, brands: 0, products: 0 });
     expect(countRows(categories)).toBe(distinctSlugs.size);
+    expect(countRows(brands)).toBe(distinctBrands.size);
     expect(countRows(products)).toBe(data.length);
   });
 
@@ -182,13 +189,14 @@ describe('seedDatabase', () => {
 
     const result = seedDatabase(testDb.db, data);
 
-    expect(result).toEqual({ categories: 0, products: 1 });
+    expect(result).toEqual({ categories: 0, brands: 0, products: 1 });
     expect(testDb.db.select().from(products).where(eq(products.id, 3)).get()).toBeDefined();
   });
 
   it('leaves products and categories created outside the seed alone', () => {
     seedDatabase(testDb.db, data);
     const misc = testDb.db.insert(categories).values({ slug: 'misc' }).returning().get();
+    const me = testDb.db.insert(brands).values({ name: 'Me' }).returning().get();
     testDb.db
       .insert(products)
       .values({
@@ -197,7 +205,7 @@ describe('seedDatabase', () => {
         categoryId: misc.id,
         price: 1,
         stock: 1,
-        brand: 'Me',
+        brandId: me.id,
         sku: 'MINE-1',
         weight: 1,
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -209,5 +217,6 @@ describe('seedDatabase', () => {
 
     expect(countRows(products)).toBe(data.length + 1);
     expect(countRows(categories)).toBe(distinctSlugs.size + 1);
+    expect(countRows(brands)).toBe(distinctBrands.size + 1);
   });
 });

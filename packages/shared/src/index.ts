@@ -1,3 +1,4 @@
+export * from './brand.js';
 export * from './category.js';
 export * from './envelope.js';
 export * from './error-details.js';
