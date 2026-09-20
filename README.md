@@ -85,7 +85,7 @@ Errors share one shape, `{ "error": { "code", "message", "details" } }`, with co
 
 ```
 apps/api        Hono server        routes -> services -> repositories (Drizzle + SQLite)
-apps/web        Svelte 5 SPA       Vite, Tailwind v4, runes for state
+apps/web        Svelte 5 SPA       Vite, Tailwind v4, Lucide icons, runes for state
 packages/shared Zod schemas        the single source of the product contract
 ```
 

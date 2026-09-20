@@ -22,6 +22,7 @@ Reference document for the Full Stack Product Catalog. It records **what** we bu
 | DB access | Drizzle ORM | Typed queries, migrations, and a schema file that doubles as data-model documentation. Swappable to Postgres later. |
 | Frontend | Svelte 5 + Vite | Minimal boilerplate, runes cover all state needs without a state library, fast builds. |
 | Styling | Tailwind CSS | Consistent, polished UI without hand-rolling a design system. |
+| Icons | `@lucide/svelte` | Svelte 5 native, tree-shakeable (imported per icon from `@lucide/svelte/icons/*`), inherits `currentColor` so icons follow the Tailwind text colour. Used only for action buttons where the meaning is obvious; every icon-only button keeps an `aria-label` and `title`. |
 | Tests | Vitest | One runner for unit and integration tests across workspaces. |
 | CI | GitHub Actions | Single workflow; required by the brief. |
 | Dependency audit | `pnpm audit`, in CI and a Husky pre-commit hook | Known-vulnerable dependencies are caught before they reach the repo and again on every push. Husky installs the hook through the root `prepare` script, so `pnpm install` is the only setup step. |
