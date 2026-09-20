@@ -16,8 +16,8 @@ these is picked up, it moves to `backlog.md` as a proper item.
   toolbar above it. Nothing has had a dedicated visual pass yet. Candidates to look at
   are the page header and layout, the table's density and hierarchy, the modal and its
   form, the empty and error states, the responsive layout on narrow screens, and a
-  favicon (the browser requests one and gets a `404` on every load). The metric strip
-  is still missing and depends on the custom-feature decision (D-2 in `backlog.md`).
+  favicon (the browser requests one and gets a `404` on every load). A design system
+  would be the place to start, so the visual pass has one set of tokens to follow.
 - **Batch editing.** Products can only be edited or deleted one at a time through the
   modal. Selecting several rows in the table and applying one change to all of them
   (set the category, adjust the price, toggle the status, or delete) would save
