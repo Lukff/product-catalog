@@ -235,3 +235,30 @@ corrected that in its summary. Committed as `1330db7` on
 
 **Reflection:** I think it worked for the scaffolding steps but we can work in bigger
 blocks now.
+
+## 2026-09-20 — List products, API and web together (B-06)
+
+**Context:** B-01 to B-05 and the Swagger docs were merged, so the API had a skeleton, seed
+data and an OpenAPI document but no routes, and the web app had a scaffold and a typed
+fetch client but no screens. B-06, the first vertical slice after the backlog
+consolidation, depends only on those, so it was next.
+
+**Tooling & prompts:** Claude Code on Sonnet 5. The prompt was "checkout main and let's work
+on the next task". The model used the superpowers `brainstorming` skill (classifying it as
+architectural, with two multiple-choice questions), then `writing-plans`, and I approved each
+with "go ahead" and "go with approach 1". Execution used `subagent-driven-development`: a
+fresh subagent per task, with a separate reviewer after each and an Opus review of the whole
+branch at the end.
+
+**What happened:** This was the first task advancing with the back and front together. The
+model picked B-06 from the backlog, and the two questions I answered were how much of the
+list query to build now (pagination only, leaving search, sort and category to B-08) and
+where the stock-status threshold lives (a shared constant of 5, so API and web agree). I
+approved skipping a separate spec file and folding the design into
+`docs/technical-decisions.md`. The plan had six tasks: the shared stock helper, `GET
+/api/products`, Vitest projects, the catalog store, the table and dashboard, then a check in
+the running app and the docs. The reviews caught a line in the plan's own code that failed
+Prettier, and the implementer had to add a lint parser rule for `*.svelte.ts` files. The
+final review found an untracked `.vitest/` directory that broke `pnpm lint`, now ignored.
+The auto-mode classifier denied one reviewer dispatch as "data exfiltration"; it went
+through once narrowed to the docs-only diff.
