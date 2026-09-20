@@ -1,7 +1,9 @@
 import { loadConfig } from '../config.js';
+import { loadDotEnv } from '../env.js';
 import { createDb } from './client.js';
 import { runMigrations } from './migrate.js';
 
+loadDotEnv();
 const { databasePath } = loadConfig();
 const db = createDb(databasePath);
 
