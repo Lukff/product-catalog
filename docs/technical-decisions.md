@@ -12,7 +12,7 @@ Reference document for the Full Stack Product Catalog. It records **what** we bu
 
 | Concern | Decision | Rationale |
 |---|---|---|
-| Language | TypeScript end-to-end (Node 20+), pinned to 6.0.x | One language across API and SPA; types shared instead of duplicated. Held below 7 because `typescript-eslint` 8.x supports `<6.1.0` only; revisit when it ships TS 7 support. |
+| Language | TypeScript end-to-end (Node 20.12+), pinned to 6.0.x | One language across API and SPA; types shared instead of duplicated. Held below 7 because `typescript-eslint` 8.x supports `<6.1.0` only; revisit when it ships TS 7 support. |
 | Package manager | pnpm (workspaces) | Strict, symlinked `node_modules` prevents phantom dependencies between workspaces; fast, disk-efficient installs; first-class workspace support. Pinned via the `packageManager` field so Corepack gives every developer and CI the same version. |
 | Lint / format | ESLint (flat config, `typescript-eslint`) + Prettier | Standard, widely understood toolchain; `eslint-plugin-svelte` and `prettier-plugin-svelte` slot in when the web app is scaffolded. |
 | Backend router | Hono | Tiny, fast, standard `Request`/`Response`, first-class testability (`app.request()` needs no live port). |
@@ -35,12 +35,14 @@ pnpm workspaces monorepo (`pnpm-workspace.yaml`) - one `pnpm install`, one sourc
 product-catalog/
   package.json            root scripts (dev, test, lint, typecheck) + packageManager pin
   pnpm-workspace.yaml     workspace globs
+  .gitattributes          LF line endings on every OS (Prettier expects LF)
   apps/
     api/                  Hono server
       src/
         index.ts          server bootstrap (binds the port, nothing else)
         app.ts            createApp({ db }) factory: routes + error handling (exported for tests)
         config.ts         PORT, DATABASE_PATH
+        env.ts            loads apps/api/.env into process.env; never overrides real variables
         errors.ts         AppError, ValidationError, NotFoundError, ConflictError
         middleware/       error-handler.ts: the one place error responses are written
         routes/           HTTP layer: parse, validate, serialize
@@ -48,6 +50,7 @@ product-catalog/
         repositories/     Drizzle queries
         db/               schema.ts, client.ts, migrate.ts, migrations/, seed.ts
       drizzle.config.ts   drizzle-kit: generates SQL migrations from schema.ts
+      .env.example        PORT and DATABASE_PATH defaults; copy to .env
       test/
     web/                  Svelte 5 SPA
       src/
@@ -201,7 +204,7 @@ The remaining decision (#2) must be resolved before the code it affects is writt
 - Local dev: API on `:3000`, Vite dev server on `:5173` proxying `/api` - no CORS config needed in development.
 - Root scripts: `pnpm dev` (both apps), `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm db:migrate`, `pnpm db:seed`.
 - pnpm is the only supported package manager: the version is pinned in the root `packageManager` field (enable with `corepack enable`), and only `pnpm-lock.yaml` is committed.
-- Config via environment variables with sane defaults (`PORT`, `DATABASE_PATH`, and a low-stock threshold if applicable); `.env.example` committed. Variables are read from the process environment and are not auto-loaded from a `.env` file; the `.env.example` values are the defaults that apply when a variable is unset. A malformed `PORT` fails at startup with a clear message.
+- Config via environment variables with sane defaults (`PORT`, `DATABASE_PATH`, and a low-stock threshold if applicable); `.env.example` committed. `apps/api/.env` (copied from `apps/api/.env.example`, gitignored) is loaded on startup by both the server and `pnpm db:migrate`, using Node's built-in `process.loadEnvFile()` - no `dotenv` dependency, which is why the Node floor is 20.12. A variable already set in the real environment always wins over the file, and a missing file is fine. The `.env.example` values are the defaults that apply when a variable is unset. A malformed `PORT` fails at startup with a clear message.
 - No authentication or authorization in this scope; noted as a next step.
 - Commits are small, single-line, and use a Conventional Commits prefix (`feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`). No message body, no footers, never a `Co-Authored-By` trailer.
 - `AI.md` is updated as work proceeds, not reconstructed at the end.
