@@ -2,7 +2,7 @@
 
 A full-stack product catalog: a Svelte 5 single-page app on top of a Hono + SQLite JSON API, in a pnpm TypeScript monorepo.
 
-> **Status.** The monorepo, shared contract, API skeleton, seed data, Swagger docs and web scaffold are in place. The product and category routes, the catalog UI and the custom feature are not built yet. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
+> **Status.** The product catalog works end to end: list, search, sort, filter, page, view, create, edit and delete. The category endpoints and UI (B-11) and the custom feature (B-12) are not built yet. See [Status and next steps](#status-and-next-steps) for exactly what runs today.
 
 ## Requirements
 
@@ -67,7 +67,7 @@ Base path `/api`, JSON only. Responses are wrapped: `{ "data": ... }`, plus `met
 | Method | Path                | Notes                                                                                                         |
 | ------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
 | GET    | `/api/products`     | Paginated. Query: `page`, `pageSize` (default 30, max 100), `q`, `category`, `sort` (for example `-price`).    |
-| GET    | `/api/products/:id` | `404` if absent.                                                                                              |
+| GET    | `/api/products/:id` | `404` if absent; a non-numeric id is a `400`.                                                                 |
 | POST   | `/api/products`     | Server assigns `id` and timestamps. `201`.                                                                    |
 | PATCH  | `/api/products/:id` | Any non-empty subset of fields; refreshes `meta.updatedAt`.                                                   |
 | DELETE | `/api/products/:id` | `204`; `404` if absent.                                                                                       |
@@ -89,7 +89,9 @@ packages/shared Zod schemas        the single source of the product contract
 - **Strict API layering.** Routes parse and serialize, services hold business rules, repositories run Drizzle queries. Routes never touch Drizzle; repositories never throw HTTP errors. ESLint `no-restricted-imports` overrides enforce this, so a violation fails `pnpm lint` and CI.
 - **App factory.** `createApp({ db })` takes the database as a dependency instead of importing a singleton, so integration tests run the real app against a throwaway SQLite file through `app.request()`, with no live port.
 - **One error path.** `middleware/error-handler.ts` maps domain errors and Zod failures to the error envelope; no route hand-writes an error response.
-- **SPA shape.** One dashboard with a detail modal, because the catalog is a single workflow. Query state lives in a runes store and is mirrored into the URL so a filtered view is shareable and the back button works.
+- **SPA shape.** One dashboard with a detail modal, because the catalog is a single workflow. Query state lives in a runes store (`catalog`) and is mirrored into the URL so a filtered view is shareable and the back button works. Only params that differ from the defaults are written to the URL, and an invalid link falls back to the default list. The search box is debounced by 300 ms.
+- **One modal for detail, create, edit and delete.** A native `<dialog>` gives Escape-to-close, a focus trap and focus restoration for free. A dialog store moves it between `detail`, `edit` and `delete` views. Opening a row shows the list's data at once and refreshes it in the background from `GET /api/products/:id`.
+- **One `ProductForm` for create and edit**, validated client-side with the same shared Zod schema as the API, so messages match. Server `details` map back onto the offending field. After a create the list resets to newest first; after a delete it steps back a page if the last row of a later page was removed. Delete always asks for confirmation.
 
 Why these choices (and what was rejected) is in [`docs/technical-decisions.md`](docs/technical-decisions.md) section 1.
 
@@ -98,7 +100,12 @@ Why these choices (and what was rejected) is in [`docs/technical-decisions.md`](
 The brief left these open; the choices are recorded here.
 
 - **PATCH only, no PUT.** One write path means one validation schema and no ambiguity about whether omitted fields are cleared.
-- **Search is `?q=`**, not a `/search` route, so it composes with category, sort and paging. It is a case-insensitive substring match over `title` and `description`.
+- **Search is `?q=`**, not a `/search` route, so it composes with category, sort and paging. It is a case-insensitive substring match over `title` and `description`; `%` and `_` match themselves rather than acting as wildcards, and a blank `q` is ignored.
+- **Stable paging.** Sorting ties always fall back to `id`, so pages never overlap or skip a row. `title` sorts case-insensitively. An unknown `category` slug is a filter with no matches (an empty `200`), not an error.
+- **Stock status is derived, not stored.** `stockStatus()` in `packages/shared` returns `out` at 0, `low` from 1 to 5 (`LOW_STOCK_THRESHOLD`, matching the seed) and `in` otherwise.
+- **Write checks run in a fixed order:** malformed JSON (`400`), schema validation (`400` with field-level `details`), category exists (`400` naming `category`), then sku uniqueness (`409`). A duplicate sku carries `details` naming `sku`, so the form shows it on the field. A product re-sending its own sku is not a conflict.
+- **PATCH writes only the fields sent.** The edit form computes the changed fields and sends nothing if nothing changed.
+- **Delete answers `204` once.** A second delete of the same id is `404`. Deleting a product never touches categories.
 - **Page-based paging** rather than offset/limit, to support a numbered pager. Trade-off: page numbers shift if rows are inserted between requests, which is acceptable for a single-user local catalog.
 - **An oversized `pageSize` is rejected** with `400`, not silently clamped.
 - **Sort fields are whitelisted:** `title`, `price`, `stock`, `weight`, `createdAt`, `updatedAt`. Anything else is a `400`.
@@ -136,7 +143,9 @@ Seeding runs in one transaction and uses `ON CONFLICT DO NOTHING`. Re-running do
 
 ## Testing and CI
 
-- **Vitest** throughout. API integration tests run the real Hono app with `app.request()` against a throwaway SQLite file per suite; unit tests cover the shared schemas and query parsing.
+- **Vitest** throughout, run from the root as one project per workspace package. The web project loads the Svelte plugin so runes in `*.svelte.ts` modules compile under test.
+- **API integration tests** run the real Hono app with `app.request()` against a throwaway SQLite file per suite, covering list, detail, create, update, delete and the query parameters.
+- **Unit tests** cover the shared schemas and stock helper, and on the web side the catalog and dialog stores, query-param and form helpers, and the API wrapper.
 - **CI** (`.github/workflows/ci.yml`, on push and pull request): `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm audit`.
 - **Pre-commit hook** (`.husky/pre-commit`) runs `pnpm audit`. It needs network access, so a commit made offline fails; use `git commit --no-verify` only when offline, since CI still enforces the audit.
 
@@ -149,21 +158,25 @@ This section will be filled in with the problem it solves, the intended persona 
 ## Open questions
 
 - **Custom feature** (above): the one unresolved product decision. Code it affects is deliberately not written yet.
-- **Low-stock threshold.** The seed treats 1-5 units as low stock. If the custom feature turns on that, the threshold becomes an environment variable.
+- **Low-stock threshold.** It is a constant (5) in `packages/shared`, used by the table's stock badge and chosen to match the seed data. If the custom feature turns on it, it may need to become configurable, for example an environment variable.
 - **Category display names.** A category is only a slug today. A display name can be added by a later migration if the UI needs one.
 
 ## Status and next steps
 
-Working today: install, migrate, seed, running both apps, the Swagger UI and the OpenAPI document, the shared contract with its tests, and CI.
+Working today, end to end (API and web):
+
+- Install, migrate, seed, and running both apps, plus the Swagger UI and OpenAPI document.
+- Listing products with a numbered pager (B-06), and search, sort, category filtering and page size, mirrored into the URL (B-08).
+- A detail modal, and creating a product (B-07).
+- Editing and deleting a product from the modal (B-10).
+- The shared contract with its tests, and CI.
 
 Not built yet, in backlog order (see [`docs/backlog.md`](docs/backlog.md)):
 
-1. Product list endpoint and dashboard table (B-06)
-2. Product detail modal (B-07)
-3. Search, sort, filter and pagination (B-08)
-4. Create, edit and delete products (B-09, B-10)
-5. Categories endpoints and UI (B-11)
-6. The custom feature and metric strip (B-12), once decided
+1. Categories endpoints and UI (B-11). Until then `GET /api/categories` and `POST /api/categories` answer "Not implemented yet", the toolbar's category select is disabled (a `?category=` in the URL still filters), and the product form takes the category as a free-text slug.
+2. The custom feature and the dashboard's metric strip (B-12), once decided.
+
+Smaller improvements found during reviews, such as a clearer message when the API is down and a visual design pass on the page, are collected in [`docs/improvement-opportunities.md`](docs/improvement-opportunities.md).
 
 Deliberately out of scope for the initial window, and documented here as next steps:
 
@@ -178,4 +191,5 @@ Deliberately out of scope for the initial window, and documented here as next st
 | [`docs/project-brief.md`](docs/project-brief.md)           | The requirements                                                              |
 | [`docs/technical-decisions.md`](docs/technical-decisions.md) | Stack, layout, API contract, data model, SPA design, testing, conventions   |
 | [`docs/backlog.md`](docs/backlog.md)                       | Work items and their status                                                   |
+| [`docs/improvement-opportunities.md`](docs/improvement-opportunities.md) | Small improvements found in review that are not scheduled       |
 | [`AI.md`](AI.md)                                           | Narrative log of the AI-assisted workflow                                     |
