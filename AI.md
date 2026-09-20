@@ -5,6 +5,80 @@ prompts and interaction traces, and reflections on what worked or needed course
 correction. Entries are added at each significant step via the `ai-log` skill
 (`.claude/skills/ai-log/SKILL.md`), newest last.
 
+## Summary
+
+A general look back at how this project was built with AI assistance. The dated
+entries under `## Log` hold the detail; this section is the overall picture.
+
+### Approach
+
+I took a spec-driven approach. Before writing any code I set up the workflow: a main
+file for architectural and technical decisions (`docs/technical-decisions.md`), which
+served as a point of reference for me and for the models, and a backlog
+(`docs/backlog.md`) describing the next tasks and what depended on what. I also built
+tools to help me record the process. The `ai-log` skill, created at the start, records
+what happened at each step, and it is part of the workflow: the AI prompts me for
+entries at relevant points. Each step also included validation of the code and the
+dependencies. The project was built over two days (2026-09-19 to 2026-09-20), in 122
+commits.
+
+### What worked
+
+- The spec-first setup: decisions and the backlog were agreed before the code, so the
+  models had something fixed to work against.
+- The technical-decisions document was so descriptive that it dismissed the need for
+  separate specs or plans in most tasks. When something was more specific, separate
+  files were added, but only as a temporary location. The decisions doc was the main
+  source of truth, apart from the code itself.
+- The recording tools (`ai-log`) and the per-step validations, including pre-commit
+  hooks that already ran checks on every commit. The `pnpm audit` hook and the browser
+  checks caught real problems.
+- Using different models to manage token usage. At one point I planned with Claude and
+  executed through Gemini 3.8 Flash in Antigravity (B-07). It worked remarkably well,
+  and it needed no corrections after the final revisions.
+- The Playwright plugin in Claude Code, used to validate the running app.
+
+### What didn't work
+
+All that setup became a bit too ceremonial for a small project with one developer, and
+it took too much of the budgeted time. I had time available, so I was not strict about
+it, but I cut some steps in the process to move faster (the separate spec files, the
+per-item PRs, and a very fine-grained backlog). CI was set up at the start, but running
+every item through a PR to get it checked took too long. Since I was already running
+checks through pre-commit hooks, I cut the PR step at a point to save time. The CI
+workflow still runs on every push to `main`. Because of the time constraints I also
+focused my review on some core points rather than going deep everywhere. There are no
+end-to-end tests with a tool like Playwright: I did not set it up so as not to
+overcomplicate the project, although the Playwright plugin was used in Claude Code to
+help with validations.
+
+### What I would do differently
+
+If the time were really strict on a shorter session, I would not have set up so much
+upfront. On a second project like this I would reduce the setup, make the tasks less
+fine-grained, and get to a working solution quicker. In another scenario, I would have
+established tools to help me go deeper into the review step. On the design side, I would
+establish a design system first.
+
+### Next steps
+
+Taken from `docs/improvement-opportunities.md` and the README:
+
+- Say "Could not reach the server" when the API is down, by mapping `502`, `503` and
+  `504` to the `NETWORK_ERROR` case in `apps/web/src/lib/api.ts`, instead of showing
+  "Bad Gateway".
+- Design. The current frontend is very simple: it works well and is consistent, but it
+  has no distinguished design. With more attention to it, I would start by establishing
+  a design system first, then do a visual pass on the header and layout, table density,
+  the modal and form, empty and error states, narrow screens, and a favicon.
+- Batch editing: a selection column, a bulk-action bar, and a batch endpoint that
+  applies the change in one transaction.
+- Support for images: one per product, touching the data model, the shared contract,
+  the API (upload handling and validation) and the SPA (thumbnail, preview,
+  placeholder).
+- End-to-end tests with Playwright (deliberately left out for now).
+- Authentication (deliberately out of scope for now).
+
 ## Log
 
 ## 2026-09-19 — Project setup & technical decisions
