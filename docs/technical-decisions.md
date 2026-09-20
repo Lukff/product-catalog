@@ -53,12 +53,15 @@ product-catalog/
       .env.example        PORT and DATABASE_PATH defaults; copy to .env
       test/
     web/                  Svelte 5 SPA
+      index.html          Vite entry
       src/
-        lib/api.ts        typed fetch wrapper (unwraps `data`)
+        main.ts, App.svelte, app.css   mount point, root component, Tailwind import
+        lib/api.ts        typed fetch wrapper (unwraps `data`; failures reject with a typed `ApiError`)
         lib/stores/       catalog query state (runes)
         components/       ProductTable, Filters, ProductForm, Pagination, MetricTiles
         views/            Dashboard, ProductDetail (modal)
-      vite.config.ts      dev proxy /api -> http://localhost:3000
+      test/               unit tests (Vitest, run from the root)
+      vite.config.ts      dev proxy /api -> http://localhost:3000; Tailwind and Svelte plugins
   packages/
     shared/               Zod schemas + inferred types, imported by api and web
   docs/
@@ -207,6 +210,7 @@ The remaining decision (#2) must be resolved before the code it affects is writt
 - Root scripts: `pnpm dev` (both apps), `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm db:migrate`, `pnpm db:seed`.
 - pnpm is the only supported package manager: the version is pinned in the root `packageManager` field (enable with `corepack enable`), and only `pnpm-lock.yaml` is committed.
 - Config via environment variables with sane defaults (`PORT`, `DATABASE_PATH`, and a low-stock threshold if applicable); `.env.example` committed. `apps/api/.env` (copied from `apps/api/.env.example`, gitignored) is loaded on startup by both the server and `pnpm db:migrate`, using Node's built-in `process.loadEnvFile()` - no `dotenv` dependency, which is why the Node floor is 20.12. A variable already set in the real environment always wins over the file, and a missing file is fine. The `.env.example` values are the defaults that apply when a variable is unset. A malformed `PORT` fails at startup with a clear message.
+- The web app is type-checked with `svelte-check` (through `pnpm typecheck`), not bare `tsc`, so `.svelte` files are covered. Its `tsconfig.json` sets `allowJs`, without which svelte-check cannot resolve `import App from './App.svelte'`. Tailwind is v4, wired through `@tailwindcss/vite` with a single `@import 'tailwindcss'` in `app.css`; there is no `tailwind.config` file.
 - No authentication or authorization in this scope; noted as a next step.
 - Commits are small, single-line, and use a Conventional Commits prefix (`feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`). No message body, no footers, never a `Co-Authored-By` trailer.
 - `AI.md` is updated as work proceeds, not reconstructed at the end.
