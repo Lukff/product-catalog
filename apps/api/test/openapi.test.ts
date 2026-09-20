@@ -54,7 +54,11 @@ const EXPECTED_STATUSES: Record<string, string[]> = {
 };
 
 /** Operations whose route exists in the real app. Add each one here as its backlog item lands. */
-const IMPLEMENTED_OPERATIONS = new Set(['GET /api/products', 'GET /api/products/{id}']);
+const IMPLEMENTED_OPERATIONS = new Set([
+  'GET /api/products',
+  'GET /api/products/{id}',
+  'POST /api/products',
+]);
 
 let testDb: TestDb;
 
@@ -424,15 +428,15 @@ describe('implementation status', () => {
 
   it('flips an operation on as soon as its route is registered, and only that one', async () => {
     const app = newApp();
-    app.get('/api/products/:id', (c) => c.json({ data: null }));
+    app.patch('/api/products/:id', (c) => c.json({ data: null }));
     app.get('/api/categories', (c) => c.json({ data: [] }));
 
     const ops = operations(await fetchDoc(app));
 
-    expect(ops.get('GET /api/products/{id}')?.['x-implemented']).toBe(true);
-    expect(ops.get('GET /api/products/{id}')?.description).not.toMatch(/Not implemented yet/);
+    expect(ops.get('PATCH /api/products/{id}')?.['x-implemented']).toBe(true);
+    expect(ops.get('PATCH /api/products/{id}')?.description).not.toMatch(/Not implemented yet/);
     expect(ops.get('GET /api/categories')?.['x-implemented']).toBe(true);
-    expect(ops.get('POST /api/products')?.['x-implemented']).toBe(false);
+    expect(ops.get('POST /api/categories')?.['x-implemented']).toBe(false);
     expect(ops.get('DELETE /api/products/{id}')?.['x-implemented']).toBe(false);
   });
 });

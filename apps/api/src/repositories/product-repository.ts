@@ -18,6 +18,19 @@ export interface ProductRecord {
   updatedAt: string;
 }
 
+export interface NewProduct {
+  title: string;
+  description: string;
+  categoryId: number;
+  price: number;
+  stock: number;
+  brand: string;
+  sku: string;
+  weight: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ListOptions {
   limit: number;
   offset: number;
@@ -92,6 +105,27 @@ export function createProductRepository(db: Db) {
         .innerJoin(categories, eq(products.categoryId, categories.id))
         .where(eq(products.id, id))
         .get();
+    },
+
+    /** The id of the category with this slug, or `undefined` when there is none. */
+    findCategoryId(slug: string): number | undefined {
+      return db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.slug, slug))
+        .get()?.id;
+    },
+
+    skuExists(sku: string): boolean {
+      return (
+        db.select({ id: products.id }).from(products).where(eq(products.sku, sku)).get() !==
+        undefined
+      );
+    },
+
+    /** Inserts the row and returns its new id. */
+    insert(values: NewProduct): number {
+      return db.insert(products).values(values).returning({ id: products.id }).get().id;
     },
 
     /** One page of the products matching the filters, plus the total number of matches. */
