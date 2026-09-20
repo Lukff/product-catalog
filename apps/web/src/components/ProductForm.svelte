@@ -2,6 +2,8 @@
   import type { CreateProductInput, Product } from '@catalog/shared';
   import { tick } from 'svelte';
   import { ApiError } from '../lib/api.js';
+  import { InlineAdd } from '../lib/inline-add.svelte.js';
+  import AddableSelect from './AddableSelect.svelte';
   import { brands } from '../lib/stores/brands.svelte.js';
   import { categories } from '../lib/stores/categories.svelte.js';
   import {
@@ -72,6 +74,9 @@
   const brandChoices = $derived(brandOptions(brands.names, originalBrand));
   const brandHint = $derived(optionsHint(brands.status, brands.names.length, 'brands'));
 
+  const categoryAdd = new InlineAdd(categories, () => categories.slugs);
+  const brandAdd = new InlineAdd(brands, () => brands.names);
+
   function hintFor(name: FormField): string | undefined {
     if (name === 'category') return categoryHint;
     if (name === 'brand') return brandHint;
@@ -136,31 +141,29 @@
           aria-describedby={errors[field.name] ? `error-${field.name}` : undefined}
           bind:value={values[field.name]}></textarea>
       {:else if field.name === 'category'}
-        <select
+        <AddableSelect
           id="field-{field.name}"
-          class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
-          aria-invalid={errors[field.name] ? 'true' : undefined}
-          aria-describedby={errors[field.name] ? `error-${field.name}` : undefined}
-          bind:value={values[field.name]}
-        >
-          <option value="">Select a category…</option>
-          {#each options as slug (slug)}
-            <option value={slug}>{slug}</option>
-          {/each}
-        </select>
+          bind:value={values.category}
+          {options}
+          noun="category"
+          placeholder="Select a category…"
+          inputPlaceholder="home-decor"
+          inline={categoryAdd}
+          invalid={!!errors.category}
+          describedby={errors.category ? 'error-category' : undefined}
+        />
       {:else if field.name === 'brand'}
-        <select
+        <AddableSelect
           id="field-{field.name}"
-          class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm"
-          aria-invalid={errors[field.name] ? 'true' : undefined}
-          aria-describedby={errors[field.name] ? `error-${field.name}` : undefined}
-          bind:value={values[field.name]}
-        >
-          <option value="">Select a brand…</option>
-          {#each brandChoices as name (name)}
-            <option value={name}>{name}</option>
-          {/each}
-        </select>
+          bind:value={values.brand}
+          options={brandChoices}
+          noun="brand"
+          placeholder="Select a brand…"
+          inputPlaceholder="Acme Corp"
+          inline={brandAdd}
+          invalid={!!errors.brand}
+          describedby={errors.brand ? 'error-brand' : undefined}
+        />
       {:else}
         <input
           id="field-{field.name}"

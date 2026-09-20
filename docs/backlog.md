@@ -276,7 +276,8 @@ Web:
   "Select a category…" placeholder; edit starts on the product's current
   category, kept as an option even if it is missing from the list. With no
   categories, or if the list failed to load, the select shows a hint instead
-  (categories are added from the toolbar's dialog, not from the product form).
+  (categories are added from the toolbar's dialog; B-18 later added an inline "Add
+  new category…" option to this select).
   The client-side "is required" message and the mapping of server errors onto the
   field are unchanged.
 
@@ -353,7 +354,7 @@ Web:
 
 ### B-18 — Create brands and categories from the product form
 
-**Status:** Todo
+**Status:** Done
 **Depends on:** B-11, B-17
 
 Lets a user register a product whose category or brand does not exist yet without
